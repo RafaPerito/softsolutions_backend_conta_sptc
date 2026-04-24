@@ -1,0 +1,136 @@
+###########################################################
+#################### 🔐 VARIÁVEIS #########################
+###########################################################
+
+@baseUrl = http://localhost:4000
+@tokenAluno = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjIxLCJlbWFpbCI6IjVANS5jb20iLCJ0aXBvIjoiYWx1bm8iLCJpYXQiOjE3NDg2NTAxOTQsImV4cCI6MTc0ODczNjU5NH0.7dV63f59tgAOhejV4c8IEaKkVzkS7JZSPA55i792zVk
+@tokenAdmin = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjIwLCJlbWFpbCI6ImFkbWluQHRlc3RlLmNvbSIsInRpcG8iOiJhZG1pbmlzdHJhZG9yIiwiaWF0IjoxNzQ4NDY2NjIwLCJleHAiOjE3NDg1NTMwMjB9.QHyalKdAopRog_K0WHLFtAeXx9JyujE5x0J-rek1hbA
+
+###########################################################
+############## 🚀 CRIAÇÃO DE CURSO - ADMIN ✅ ##############
+###########################################################
+
+POST {{baseUrl}}/cursos
+Authorization: Bearer {{tokenAdmin}}
+Content-Type: application/json
+
+{
+  "nomeCurso": "Curso Avançado",
+  "tempoCurso": 120,
+  "descricaoCurta": "Curso avançado de backend",
+  "descricaoDetalhada": "Aprofundamento em NestJS e arquitetura limpa",
+  "professor": "Carlos Oliveira",
+  "categoria": "Backend",
+  "imagemCurso": "curso-avancado.png"
+}
+
+###########################################################
+###### 🚫 TENTATIVA DE CRIAR CURSO COM ALUNO ❌ (403) ######
+###########################################################
+
+POST {{baseUrl}}/cursos
+Authorization: Bearer {{tokenAluno}}
+Content-Type: application/json
+
+{
+  "nomeCurso": "Curso Restrito",
+  "tempoCurso": 100,
+  "descricaoCurta": "Teste restrito",
+  "descricaoDetalhada": "Conteúdo apenas para administradores",
+  "professor": "Zé da Silva",
+  "categoria": "Frontend",
+  "imagemCurso": "restrito.png"
+}
+
+###########################################################
+############## 📋 LISTAR TODOS OS CURSOS ✅ ################
+###########################################################
+
+GET {{baseUrl}}/cursos
+Authorization: Bearer {{tokenAluno}}
+
+###########################################################
+########### 🔍 BUSCAR CURSO POR ID - ADMIN ✅ ##############
+###########################################################
+
+GET {{baseUrl}}/cursos/12
+Authorization: Bearer {{tokenAdmin}}
+
+###########################################################
+##### ✏️ ATUALIZAR CURSO POR ID - ADMIN ✅ #################
+###########################################################
+
+PUT {{baseUrl}}/cursos/7
+Authorization: Bearer {{tokenAdmin}}
+Content-Type: application/json
+
+{
+  "descricaoCurta": "Curso atualizado",
+  "tempoCurso": 150
+}
+
+###########################################################
+##### 🗑️ DELETAR CURSO POR ID - ADMIN ✅ ###################
+###########################################################
+
+DELETE {{baseUrl}}/cursos/7
+Authorization: Bearer {{tokenAdmin}}
+
+###########################################################
+############### BUSCAR CURSOS SEM TOKEN - ✅  ############
+###########################################################
+
+GET {{baseUrl}}/cursos
+
+###########################################################
+############### BUSCAR CURSO PR ID SEM TOKEN - ✅  ############
+###########################################################
+
+GET {{baseUrl}}/cursos/17
+
+
+###########################################################
+############# 📋 LISTAR MÓDULOS E AULAS DO CURSO ##########
+###########################################################
+
+GET {{baseUrl}}/inscricoes/17/aulas
+Authorization: Bearer {{tokenAluno}}
+
+###########################################################
+######### 📋 TESTE: LISTAR MÓDULOS E AULAS DO CURSO #######
+###########################################################
+
+GET {{baseUrl}}/cursos/17/aulas
+Authorization: Bearer {{tokenAluno}}
+
+###########################################################
+######### 📋 TESTE: LISTAR MÓDULOS E AULAS DO CURSO #######
+######### 🔐 USUÁRIO INSCRITO (deve funcionar) ✅ ##########
+###########################################################
+
+GET {{baseUrl}}/cursos/17/aulas
+Authorization: Bearer {{tokenAluno}}
+
+
+###########################################################
+######### 📋 TESTE: LISTAR MÓDULOS E AULAS DO CURSO #######
+####### 🔒 USUÁRIO NÃO INSCRITO (deve dar 403) ❌ ##########
+###########################################################
+
+GET {{baseUrl}}/cursos/17/aulas
+Authorization: Bearer {{tokenAdmin}}
+
+
+###########################################################
+######### 📋 TESTE: LISTAR MÓDULOS E AULAS DO CURSO #######
+########### 🔓 SEM TOKEN (deve dar 401) ❌ #################
+###########################################################
+
+GET {{baseUrl}}/cursos/17/aulas
+
+###########################################################
+######### 📋 TESTE: LISTAR QUANSTAS INCRIÇÕES ECXISTEM NO CURSO #######
+########### 🔓 SEM TOKEN (deve dar 401) ❌ #################
+###########################################################
+
+GET {{baseUrl}}/cursos/5/inscritos

@@ -1,0 +1,152 @@
+###########################################################
+#################### 🔐 VARIÁVEIS #########################
+###########################################################
+
+@baseUrl = http://localhost:4000
+@tokenAluno = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjMsImVtYWlsIjoibWFyaWFAdGVzdGUuY29tIiwidGlwbyI6ImFsdW5vIiwiaWF0IjoxNzUwMjAwOTMxLCJleHAiOjE3NTAyODczMzF9.gHtqgSA3hq3z7KQJGZz9fAlDzm6mhUfFvHEorBQcA8k
+@tokenAdmin = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEsImVtYWlsIjoiYWRtaW5AdGVzdGUuY29tIiwidGlwbyI6ImFkbWluaXN0cmFkb3IiLCJpYXQiOjE3NTAxOTMyMjIsImV4cCI6MTc1MDI3OTYyMn0.MPVe-WEawZvrVUDGLYYXqlYL1P1IXHXZeXFcp-fPTYo
+
+###########################################################
+############## 🚀 CADASTRO DE ALUNO #######################
+###########################################################
+
+POST {{baseUrl}}/usuarios/cadastro
+Content-Type: application/json
+
+{
+  "nomeUsuario": "Aluno Teste",
+  "cpfUsuario": "25540611063",
+  "email": "aluno@teste5988.com",
+  "senha": "12345678"
+}
+
+###########################################################
+## 🚀 CADASTRO DE ADMINISTRADOR - força tipo aluno ########
+###########################################################
+
+POST {{baseUrl}}/usuarios/cadastro
+Content-Type: application/json
+
+{
+  "nomeUsuario": "Admin Teste",
+  "cpfUsuario": "70251393003",
+  "email": "admin58@teste898.com",
+  "senha": "admin123",
+  "tipo": "administrador"
+}
+
+###########################################################
+################ 🔑 LOGIN - ALUNO #########################
+###########################################################
+
+POST {{baseUrl}}/usuarios/login
+Content-Type: application/json
+
+{
+  "email": "lucas@teste.com",
+  "senha": "123456"
+}
+
+###########################################################
+################ 🔑 LOGIN - ADMIN #########################
+###########################################################
+
+POST {{baseUrl}}/usuarios/login
+Content-Type: application/json
+
+{
+  "email": "admin@teste.com",
+  "senha": "123456"
+}
+
+###########################################################
+########## 📑 LISTAR TODOS OS USUÁRIOS - ADMIN ✅ ##########
+###########################################################
+
+GET {{baseUrl}}/usuarios
+Authorization: Bearer {{tokenAdmin}}
+
+###########################################################
+######## LISTAR TODOS OS USUÁRIOS - ALUNO ❌ (403) ########
+###########################################################
+
+GET {{baseUrl}}/usuarios
+Authorization: Bearer {{tokenAluno}}
+
+###########################################################
+########### 👤 BUSCAR PRÓPRIO PERFIL - ALUNO ✅ ############
+###########################################################
+
+GET {{baseUrl}}/usuarios/21
+Authorization: Bearer {{tokenAluno}}
+
+###########################################################
+########### 👤 BUSCAR QUALQUER USUÁRIO - ADMIN ✅ ##########
+###########################################################
+
+GET {{baseUrl}}/usuarios/22
+Authorization: Bearer {{tokenAdmin}}
+
+###########################################################
+#### ✏️ ATUALIZAR PRÓPRIO PERFIL - ALUNO ✅ ################
+###########################################################
+
+PUT {{baseUrl}}/usuarios/21
+Authorization: Bearer {{tokenAluno}}
+Content-Type: application/json
+
+{
+  "nomeUsuario": "Aluno Atualizado",
+  "telefone": "(11) 92234-5678"
+}
+
+###########################################################
+########## 🚫 TENTATIVA DE ALTERAR CPF - NEGADO ###########
+###########################################################
+
+PUT {{baseUrl}}/usuarios/21
+Authorization: Bearer {{tokenAluno}}
+Content-Type: application/json
+
+{
+  "cpfUsuario": "94192720019"
+}
+
+###########################################################
+########## 🚫 TENTATIVA DE ALTERAR TIPO - NEGADO ##########
+###########################################################
+
+PUT {{baseUrl}}/usuarios/21
+Authorization: Bearer {{tokenAluno}}
+Content-Type: application/json
+
+{
+  "tipo": "administrador"
+}
+
+###########################################################
+######## 🗑️ DELETAR PRÓPRIO USUÁRIO - ALUNO ✅ #############
+###########################################################
+
+DELETE {{baseUrl}}/usuarios/26
+Authorization: Bearer {{tokenAluno}}
+
+###########################################################
+###### 🗑️ DELETAR QUALQUER USUÁRIO - ADMIN ✅ ##############
+###########################################################
+
+DELETE {{baseUrl}}/usuarios/16
+Authorization: Bearer {{tokenAdmin}}
+
+###########################################################
+############### 🔒 SEM TOKEN - ❌ (401) ####################
+###########################################################
+
+GET {{baseUrl}}/usuarios
+
+###########################################################
+############### 🔒 TOKEN INVÁLIDO ❌ (401) #################
+###########################################################
+
+GET {{baseUrl}}/usuarios
+Authorization: Bearer TOKEN_INVALIDO

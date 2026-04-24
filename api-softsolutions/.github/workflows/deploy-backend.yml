@@ -1,0 +1,52 @@
+name: deploy-backend-aws
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Atualizar backend na EC2 via SSH
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            echo ">> Login no Docker Hub"
+            docker login -u ${{ secrets.USUARIO_DOCKER }} -p ${{ secrets.SENHA_DOCKER }}
+
+            echo ">> Pull da nova imagem"
+            docker pull softsolutionsfatecvotorantim/backend:latest
+
+            echo ">> Parando container antigo"
+            docker stop api-softsolutions || true
+            docker rm api-softsolutions || true
+
+            echo ">> Subindo novo container (com restart automático e porta interna)"
+            docker run -d --name api-softsolutions \
+              --restart unless-stopped \
+              -p 127.0.0.1:4000:4000 \
+              -e PORT=4000 \
+              -e NODE_ENV=production \
+              -e NODE_TLS_REJECT_UNAUTHORIZED=0 \
+              -e DATABASE_URL="${{ secrets.DATABASE_URL_PROD }}" \
+              -e JWT_SECRET="${{ secrets.JWT_SECRET }}" \
+              -e EMAIL_SUPPORT_USER="${{ secrets.EMAIL_SUPPORT_USER }}" \
+              -e EMAIL_SUPPORT_PASS="${{ secrets.EMAIL_SUPPORT_PASS }}" \
+              -e EMAIL_SUPPORT_DESTINATION="${{ secrets.EMAIL_SUPPORT_DESTINATION }}" \
+              -e AWS_REGION="${{ vars.AWS_REGION }}" \
+              -e AWS_S3_BUCKET="${{ vars.AWS_S3_BUCKET }}" \
+              -e AWS_S3_BUCKET_REPLICA="${{ vars.AWS_S3_BUCKET_REPLICA }}" \
+              -e AWS_AVATAR_TABLE="${{ vars.AWS_AVATAR_TABLE }}" \
+              softsolutionsfatecvotorantim/backend:latest
+
+            echo ">> Containers em execução:"
+            docker ps
+
+
+            
