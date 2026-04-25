@@ -5,19 +5,20 @@ WORKDIR /app
 
 COPY package*.json ./
 COPY tsconfig*.json ./
+RUN npm install
+
 COPY . .
 
-RUN npm install
 RUN npm run build
+RUN npm prune --production
 
 # Etapa 2 - Produção
 FROM node:18
 
 WORKDIR /app
 
-COPY package*.json ./
-RUN npm install --only=production
-
+COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 
 EXPOSE 4000

@@ -33,8 +33,8 @@ export default new DataSource({
   ],
 
   migrations: [
-    isProd
-      ? 'dist/infrastructure/database/migrations/*.js'
-      : 'src/infrastructure/database/migrations/*.ts',
+  isProd
+    ? 'dist/src/infrastructure/database/migrations/*.js'
+    : 'src/infrastructure/database/migrations/*.ts',
   ],
 });

@@ -18,7 +18,7 @@ export class CertificadoEntity {
   @JoinColumn({ name: 'cursoId' })
   curso: CursoEntity;
 
-  @Column({ type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
+  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   dataEmissao: Date;
 
   @Column({ nullable: true })

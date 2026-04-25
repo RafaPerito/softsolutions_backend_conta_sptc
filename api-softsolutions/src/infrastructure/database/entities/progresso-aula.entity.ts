@@ -8,15 +8,15 @@ export class ProgressoAulaEntity implements ProgressoAulaModel {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ManyToOne(() => InscricaoEntity, inscricao => inscricao.progressoAulas)
+  @ManyToOne(() => InscricaoEntity, (inscricao) => inscricao.progressoAulas)
   inscricao: InscricaoEntity;
 
-  @ManyToOne(() => AulaEntity, aula => aula.progressos)
+  @ManyToOne(() => AulaEntity, (aula) => aula.progressos)
   aula: AulaEntity;
 
   @Column({ default: false })
   concluida: boolean;
 
-  @Column({ type: 'datetime', nullable: true })
-  dataConclusao: Date;
+  @Column({ type: 'timestamp', nullable: true })
+  dataConclusao?: Date;
 }

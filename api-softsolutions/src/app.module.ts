@@ -6,6 +6,7 @@ import { InfrastructureModule } from './infrastructure/infrastructure.module';
 import { ApplicationModule } from './application/application.module';
 import { InterfacesModule } from './interfaces/interfaces.module';
 import { ArtifactsModule } from './artifacts/artifacts.module';
+import { SearchModule } from './modules/search.module';
 
 const isProd = process.env.NODE_ENV === 'production';
 
@@ -32,6 +33,7 @@ const isProd = process.env.NODE_ENV === 'production';
     ApplicationModule,
     InterfacesModule,
     ArtifactsModule,
+    SearchModule,
   ],
 })
 export class AppModule {}
