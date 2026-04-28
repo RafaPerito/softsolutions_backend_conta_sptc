@@ -5,11 +5,10 @@ import { SearchItem } from '../interfaces/search-item.interface';
 export class MeilisearchService implements OnModuleInit {
   private client: any;
   private index: any;
+  private readonly indexUid = 'softsolutions';
 
   async onModuleInit() {
-    const meiliPkg = await new Function(
-      `return import('meilisearch')`,
-    )();
+    const meiliPkg = await new Function(`return import('meilisearch')`)();
 
     const MeiliSearchClient =
       meiliPkg.MeiliSearch ||
@@ -23,18 +22,65 @@ export class MeilisearchService implements OnModuleInit {
       apiKey: process.env.MEILI_API_KEY || undefined,
     });
 
-    this.index = this.client.index('softsolutions');
-
+    this.index = this.client.index(this.indexUid);
     await this.configureIndex();
   }
 
   private async configureIndex() {
     await this.index.updateSearchableAttributes([
       'titulo',
+      'curso',
+      'modulo',
       'descricao',
-      'tags',
       'categoria',
+      'tags',
       'conteudo',
+      'professor',
+    ]);
+
+    await this.index.updateDisplayedAttributes([
+      'id',
+      'tipo',
+      'cursoId',
+      'aulaId',
+      'titulo',
+      'descricao',
+      'categoria',
+      'tags',
+      'conteudo',
+      'professor',
+      'status',
+      'avaliacao',
+      'imagemCurso',
+      'tempoCurso',
+      'modulo',
+      'curso',
+      'videoUrl',
+      'tempoAula',
+    ]);
+
+    await this.index.updateFilterableAttributes([
+      'tipo',
+      'cursoId',
+      'aulaId',
+      'categoria',
+      'status',
+    ]);
+
+    await this.index.updateSortableAttributes([
+      'titulo',
+      'avaliacao',
+      'tempoCurso',
+      'tempoAula',
+    ]);
+
+    await this.index.updateRankingRules([
+      'words',
+      'typo',
+      'proximity',
+      'attribute',
+      'sort',
+      'exactness',
     ]);
 
     await this.index.updateSynonyms({
@@ -44,6 +90,10 @@ export class MeilisearchService implements OnModuleInit {
       backend: ['back-end', 'back end'],
       ia: ['inteligencia artificial', 'inteligência artificial'],
       banco: ['database', 'bd'],
+      curso: ['aula', 'treinamento'],
+      aula: ['curso', 'lição'],
+      reactnative: ['react native', 'react-native'],
+      'react native': ['reactnative', 'react-native'],
     });
 
     await this.index.updateStopWords([
@@ -57,6 +107,9 @@ export class MeilisearchService implements OnModuleInit {
       'e',
       'para',
       'com',
+      'um',
+      'uma',
+      'em',
     ]);
   }
 
@@ -72,7 +125,7 @@ export class MeilisearchService implements OnModuleInit {
 
   async addDocuments(documents: SearchItem[]) {
     try {
-      return await this.index.addDocuments(documents);
+      return await this.index.addDocuments(documents, { primaryKey: 'id' });
     } catch (error) {
       console.error('Erro ao indexar documentos no Meilisearch:', error);
       throw error;

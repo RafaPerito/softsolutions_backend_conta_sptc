@@ -65,34 +65,62 @@ import { AtualizarAvaliacaoUseCase } from './use-cases/avaliacao/atualizar-avali
 // Dashboard use case
 import { BuildDashboardUseCase } from './use-cases/dashboard/build-dashboard.use-case';
 
+// Search use case
+import { SearchVoiceUseCase } from './use-cases/search/search-voice.use-case';
+
 @Module({
   imports: [
     TypeOrmModule.forFeature([
-      UsuarioEntity, CursoEntity, ModuloEntity, AulaEntity,
-      InscricaoEntity, ProgressoAulaEntity, CertificadoEntity, AvaliacaoEntity
+      UsuarioEntity,
+      CursoEntity,
+      ModuloEntity,
+      AulaEntity,
+      InscricaoEntity,
+      ProgressoAulaEntity,
+      CertificadoEntity,
+      AvaliacaoEntity,
     ]),
     InfrastructureModule,
   ],
   providers: [
     // Usuario
-    CreateUsuarioUseCase, DeleteUsuarioUseCase, GetUsuarioByIdUseCase,
-    ListUsuarioUseCase, LoginUsuarioUseCase, UpdateUsuarioUseCase,
+    CreateUsuarioUseCase,
+    DeleteUsuarioUseCase,
+    GetUsuarioByIdUseCase,
+    ListUsuarioUseCase,
+    LoginUsuarioUseCase,
+    UpdateUsuarioUseCase,
 
     // Curso
-    CreateCursoUseCase, DeleteCursoUseCase, GetCursoByIdUseCase,
-    ListCursoUseCase, UpdateCursoUseCase,
+    CreateCursoUseCase,
+    DeleteCursoUseCase,
+    GetCursoByIdUseCase,
+    ListCursoUseCase,
+    UpdateCursoUseCase,
 
     // Modulo
-    CreateModuloUseCase, DeleteModuloUseCase, GetModuloByIdUseCase,
-    ListModuloUseCase, UpdateModuloUseCase,
+    CreateModuloUseCase,
+    DeleteModuloUseCase,
+    GetModuloByIdUseCase,
+    ListModuloUseCase,
+    UpdateModuloUseCase,
 
     // Aula
-    CreateAulaUseCase, DeleteAulaUseCase, GetAulaByIdUseCase,
-    ListAulaUseCase, UpdateAulaUseCase, ListAulaByModuloUseCase, ListAulaByCursoUseCase,
+    CreateAulaUseCase,
+    DeleteAulaUseCase,
+    GetAulaByIdUseCase,
+    ListAulaUseCase,
+    UpdateAulaUseCase,
+    ListAulaByModuloUseCase,
+    ListAulaByCursoUseCase,
 
     // Inscricao
-    InscreverUsuarioUseCase, ListarInscricoesUseCase, MarcarAulaConcluidaUseCase,
-    CancelarInscricaoUseCase, VerProgressoUseCase, DesmarcarAulaConcluidaUseCase,
+    InscreverUsuarioUseCase,
+    ListarInscricoesUseCase,
+    MarcarAulaConcluidaUseCase,
+    CancelarInscricaoUseCase,
+    VerProgressoUseCase,
+    DesmarcarAulaConcluidaUseCase,
 
     // Email
     EnviarEmailUseCase,
@@ -101,31 +129,54 @@ import { BuildDashboardUseCase } from './use-cases/dashboard/build-dashboard.use
     EmitirCertificadoUseCase,
 
     // Avaliacao
-    CriarAvaliacaoUseCase, AtualizarAvaliacaoUseCase,
+    CriarAvaliacaoUseCase,
+    AtualizarAvaliacaoUseCase,
 
     // Dashboard
-    BuildDashboardUseCase
+    BuildDashboardUseCase,
+
+    // Search
+    SearchVoiceUseCase,
   ],
   exports: [
     // Usuario
-    CreateUsuarioUseCase, DeleteUsuarioUseCase, GetUsuarioByIdUseCase,
-    ListUsuarioUseCase, LoginUsuarioUseCase, UpdateUsuarioUseCase,
+    CreateUsuarioUseCase,
+    DeleteUsuarioUseCase,
+    GetUsuarioByIdUseCase,
+    ListUsuarioUseCase,
+    LoginUsuarioUseCase,
+    UpdateUsuarioUseCase,
 
     // Curso
-    CreateCursoUseCase, DeleteCursoUseCase, GetCursoByIdUseCase,
-    ListCursoUseCase, UpdateCursoUseCase,
+    CreateCursoUseCase,
+    DeleteCursoUseCase,
+    GetCursoByIdUseCase,
+    ListCursoUseCase,
+    UpdateCursoUseCase,
 
     // Modulo
-    CreateModuloUseCase, DeleteModuloUseCase, GetModuloByIdUseCase,
-    ListModuloUseCase, UpdateModuloUseCase,
+    CreateModuloUseCase,
+    DeleteModuloUseCase,
+    GetModuloByIdUseCase,
+    ListModuloUseCase,
+    UpdateModuloUseCase,
 
     // Aula
-    CreateAulaUseCase, DeleteAulaUseCase, GetAulaByIdUseCase,
-    ListAulaUseCase, UpdateAulaUseCase, ListAulaByModuloUseCase, ListAulaByCursoUseCase,
+    CreateAulaUseCase,
+    DeleteAulaUseCase,
+    GetAulaByIdUseCase,
+    ListAulaUseCase,
+    UpdateAulaUseCase,
+    ListAulaByModuloUseCase,
+    ListAulaByCursoUseCase,
 
     // Inscricao
-    InscreverUsuarioUseCase, ListarInscricoesUseCase, MarcarAulaConcluidaUseCase,
-    CancelarInscricaoUseCase, VerProgressoUseCase, DesmarcarAulaConcluidaUseCase,
+    InscreverUsuarioUseCase,
+    ListarInscricoesUseCase,
+    MarcarAulaConcluidaUseCase,
+    CancelarInscricaoUseCase,
+    VerProgressoUseCase,
+    DesmarcarAulaConcluidaUseCase,
 
     // Email
     EnviarEmailUseCase,
@@ -134,10 +185,14 @@ import { BuildDashboardUseCase } from './use-cases/dashboard/build-dashboard.use
     EmitirCertificadoUseCase,
 
     // Avaliacao
-    CriarAvaliacaoUseCase, AtualizarAvaliacaoUseCase,
+    CriarAvaliacaoUseCase,
+    AtualizarAvaliacaoUseCase,
 
     // Dashboard
-    BuildDashboardUseCase
+    BuildDashboardUseCase,
+
+    // Search
+    SearchVoiceUseCase,
   ],
 })
 export class ApplicationModule {}

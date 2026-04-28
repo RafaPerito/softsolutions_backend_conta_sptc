@@ -23,6 +23,7 @@ export class MeilisearchIndexerService {
       id: `curso-${curso.id}`,
       tipo: 'curso',
       cursoId: curso.id,
+      aulaId: null,
       titulo: curso.nomeCurso,
       descricao: `${curso.descricaoCurta || ''} ${curso.descricaoDetalhada || ''}`.trim(),
       categoria: curso.categoria || '',
@@ -44,11 +45,15 @@ export class MeilisearchIndexerService {
       ]
         .filter(Boolean)
         .join(' '),
-      professor: curso.professor,
-      status: curso.status,
-      avaliacao: curso.avaliacao,
-      imagemCurso: curso.imagemCurso,
-      tempoCurso: curso.tempoCurso,
+      professor: curso.professor || '',
+      status: curso.status || '',
+      avaliacao: curso.avaliacao ?? null,
+      imagemCurso: curso.imagemCurso || '',
+      tempoCurso: curso.tempoCurso ?? null,
+      modulo: '',
+      curso: curso.nomeCurso,
+      videoUrl: '',
+      tempoAula: null,
     }));
 
     const aulaDocs = cursos.flatMap((curso: any) =>
@@ -80,11 +85,15 @@ export class MeilisearchIndexerService {
           ]
             .filter(Boolean)
             .join(' '),
-          modulo: modulo.nomeModulo,
+          professor: curso.professor || '',
+          status: curso.status || '',
+          avaliacao: curso.avaliacao ?? null,
+          imagemCurso: curso.imagemCurso || '',
+          tempoCurso: curso.tempoCurso ?? null,
+          modulo: modulo.nomeModulo || '',
           curso: curso.nomeCurso,
-          professor: curso.professor,
-          videoUrl: aula.videoUrl,
-          tempoAula: aula.tempoAula,
+          videoUrl: aula.videoUrl || '',
+          tempoAula: aula.tempoAula ?? null,
         })),
       ),
     );
