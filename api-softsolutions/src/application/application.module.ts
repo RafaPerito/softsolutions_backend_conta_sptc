@@ -65,9 +65,6 @@ import { AtualizarAvaliacaoUseCase } from './use-cases/avaliacao/atualizar-avali
 // Dashboard use case
 import { BuildDashboardUseCase } from './use-cases/dashboard/build-dashboard.use-case';
 
-// Search use case
-import { SearchVoiceUseCase } from './use-cases/search/search-voice.use-case';
-
 @Module({
   imports: [
     TypeOrmModule.forFeature([
@@ -83,7 +80,6 @@ import { SearchVoiceUseCase } from './use-cases/search/search-voice.use-case';
     InfrastructureModule,
   ],
   providers: [
-    // Usuario
     CreateUsuarioUseCase,
     DeleteUsuarioUseCase,
     GetUsuarioByIdUseCase,
@@ -91,21 +87,18 @@ import { SearchVoiceUseCase } from './use-cases/search/search-voice.use-case';
     LoginUsuarioUseCase,
     UpdateUsuarioUseCase,
 
-    // Curso
     CreateCursoUseCase,
     DeleteCursoUseCase,
     GetCursoByIdUseCase,
     ListCursoUseCase,
     UpdateCursoUseCase,
 
-    // Modulo
     CreateModuloUseCase,
     DeleteModuloUseCase,
     GetModuloByIdUseCase,
     ListModuloUseCase,
     UpdateModuloUseCase,
 
-    // Aula
     CreateAulaUseCase,
     DeleteAulaUseCase,
     GetAulaByIdUseCase,
@@ -114,7 +107,6 @@ import { SearchVoiceUseCase } from './use-cases/search/search-voice.use-case';
     ListAulaByModuloUseCase,
     ListAulaByCursoUseCase,
 
-    // Inscricao
     InscreverUsuarioUseCase,
     ListarInscricoesUseCase,
     MarcarAulaConcluidaUseCase,
@@ -122,24 +114,13 @@ import { SearchVoiceUseCase } from './use-cases/search/search-voice.use-case';
     VerProgressoUseCase,
     DesmarcarAulaConcluidaUseCase,
 
-    // Email
     EnviarEmailUseCase,
-
-    // Certificado
     EmitirCertificadoUseCase,
-
-    // Avaliacao
     CriarAvaliacaoUseCase,
     AtualizarAvaliacaoUseCase,
-
-    // Dashboard
     BuildDashboardUseCase,
-
-    // Search
-    SearchVoiceUseCase,
   ],
   exports: [
-    // Usuario
     CreateUsuarioUseCase,
     DeleteUsuarioUseCase,
     GetUsuarioByIdUseCase,
@@ -147,21 +128,18 @@ import { SearchVoiceUseCase } from './use-cases/search/search-voice.use-case';
     LoginUsuarioUseCase,
     UpdateUsuarioUseCase,
 
-    // Curso
     CreateCursoUseCase,
     DeleteCursoUseCase,
     GetCursoByIdUseCase,
     ListCursoUseCase,
     UpdateCursoUseCase,
 
-    // Modulo
     CreateModuloUseCase,
     DeleteModuloUseCase,
     GetModuloByIdUseCase,
     ListModuloUseCase,
     UpdateModuloUseCase,
 
-    // Aula
     CreateAulaUseCase,
     DeleteAulaUseCase,
     GetAulaByIdUseCase,
@@ -170,7 +148,6 @@ import { SearchVoiceUseCase } from './use-cases/search/search-voice.use-case';
     ListAulaByModuloUseCase,
     ListAulaByCursoUseCase,
 
-    // Inscricao
     InscreverUsuarioUseCase,
     ListarInscricoesUseCase,
     MarcarAulaConcluidaUseCase,
@@ -178,21 +155,11 @@ import { SearchVoiceUseCase } from './use-cases/search/search-voice.use-case';
     VerProgressoUseCase,
     DesmarcarAulaConcluidaUseCase,
 
-    // Email
     EnviarEmailUseCase,
-
-    // Certificado
     EmitirCertificadoUseCase,
-
-    // Avaliacao
     CriarAvaliacaoUseCase,
     AtualizarAvaliacaoUseCase,
-
-    // Dashboard
     BuildDashboardUseCase,
-
-    // Search
-    SearchVoiceUseCase,
   ],
 })
 export class ApplicationModule {}
