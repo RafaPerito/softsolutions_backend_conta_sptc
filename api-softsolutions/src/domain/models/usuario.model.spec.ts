@@ -1,6 +1,4 @@
-describe('UsuarioModel', () => {
-
-const { UsuarioModel } = require('./usuario.model');
+import { UsuarioModel } from './usuario.model';
 
 describe('UsuarioModel', () => {
   it('deve criar um modelo de usuário', () => {
@@ -15,5 +13,19 @@ describe('UsuarioModel', () => {
     };
     expect(model).toBeDefined();
     expect(model.nomeUsuario).toBe('Teste');
+  });
+
+  it('deve criar modelo de administrador', () => {
+    const model: UsuarioModel = {
+      id: 2,
+      nomeUsuario: 'Admin',
+      cpfUsuario: '456',
+      email: 'admin@teste.com',
+      senha: 'senha123',
+      tipo: 'administrador',
+      telefone: '888',
+    };
+    expect(model).toBeDefined();
+    expect(model.tipo).toBe('administrador');
   });
 });
