@@ -15,9 +15,10 @@ describe('Integração: Progresso de Aula', () => {
   let aulaRepo: AulaRepository;
   let inscricaoRepo: InscricaoRepository;
   let progressoRepo: ProgressoAulaRepository;
+  let moduleRef: TestingModule;
 
   beforeAll(async () => {
-    const module: TestingModule = await Test.createTestingModule({
+    moduleRef = await Test.createTestingModule({
       imports: [
         TypeOrmModule.forRoot({
           type: 'sqlite',
@@ -30,12 +31,16 @@ describe('Integração: Progresso de Aula', () => {
       ],
     }).compile();
 
-    usuarioRepo = module.get<UsuarioRepository>(UsuarioRepository);
-    cursoRepo = module.get<CursoRepository>(CursoRepository);
-    moduloRepo = module.get<ModuloRepository>(ModuloRepository);
-    aulaRepo = module.get<AulaRepository>(AulaRepository);
-    inscricaoRepo = module.get<InscricaoRepository>(InscricaoRepository);
-    progressoRepo = module.get<ProgressoAulaRepository>(ProgressoAulaRepository);
+    usuarioRepo = moduleRef.get<UsuarioRepository>(UsuarioRepository);
+    cursoRepo = moduleRef.get<CursoRepository>(CursoRepository);
+    moduloRepo = moduleRef.get<ModuloRepository>(ModuloRepository);
+    aulaRepo = moduleRef.get<AulaRepository>(AulaRepository);
+    inscricaoRepo = moduleRef.get<InscricaoRepository>(InscricaoRepository);
+    progressoRepo = moduleRef.get<ProgressoAulaRepository>(ProgressoAulaRepository);
+  });
+
+  afterAll(async () => {
+    await moduleRef.close();
   });
 
   it('deve registrar progresso de aula para usuário inscrito', async () => {

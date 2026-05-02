@@ -9,9 +9,10 @@ describe('Integração: Avaliação de Curso', () => {
   let usuarioRepo: UsuarioRepository;
   let cursoRepo: CursoRepository;
   let avaliacaoRepo: AvaliacaoRepository;
+  let moduleRef: TestingModule;
 
   beforeAll(async () => {
-    const module: TestingModule = await Test.createTestingModule({
+    moduleRef = await Test.createTestingModule({
       imports: [
         TypeOrmModule.forRoot({
           type: 'sqlite',
@@ -24,9 +25,13 @@ describe('Integração: Avaliação de Curso', () => {
       ],
     }).compile();
 
-    usuarioRepo = module.get<UsuarioRepository>(UsuarioRepository);
-    cursoRepo = module.get<CursoRepository>(CursoRepository);
-    avaliacaoRepo = module.get<AvaliacaoRepository>(AvaliacaoRepository);
+    usuarioRepo = moduleRef.get<UsuarioRepository>(UsuarioRepository);
+    cursoRepo = moduleRef.get<CursoRepository>(CursoRepository);
+    avaliacaoRepo = moduleRef.get<AvaliacaoRepository>(AvaliacaoRepository);
+  });
+
+  afterAll(async () => {
+    await moduleRef.close();
   });
 
   it('deve registrar avaliação de curso por usuário', async () => {

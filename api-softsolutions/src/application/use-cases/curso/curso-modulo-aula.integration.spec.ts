@@ -9,9 +9,10 @@ describe('Integração: Curso + Módulo + Aula', () => {
   let cursoRepo: CursoRepository;
   let moduloRepo: ModuloRepository;
   let aulaRepo: AulaRepository;
+  let moduleRef: TestingModule;
 
   beforeAll(async () => {
-    const module: TestingModule = await Test.createTestingModule({
+    moduleRef = await Test.createTestingModule({
       imports: [
         TypeOrmModule.forRoot({
           type: 'sqlite',
@@ -24,9 +25,13 @@ describe('Integração: Curso + Módulo + Aula', () => {
       ],
     }).compile();
 
-    cursoRepo = module.get<CursoRepository>(CursoRepository);
-    moduloRepo = module.get<ModuloRepository>(ModuloRepository);
-    aulaRepo = module.get<AulaRepository>(AulaRepository);
+    cursoRepo = moduleRef.get<CursoRepository>(CursoRepository);
+    moduloRepo = moduleRef.get<ModuloRepository>(ModuloRepository);
+    aulaRepo = moduleRef.get<AulaRepository>(AulaRepository);
+  });
+
+  afterAll(async () => {
+    await moduleRef.close();
   });
 
   it('deve criar curso, módulo e aula vinculados', async () => {

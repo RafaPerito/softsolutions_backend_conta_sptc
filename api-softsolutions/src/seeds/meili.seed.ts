@@ -1,9 +1,18 @@
 import { MeilisearchService } from '../infrastructure/search/meilisearch/meilisearch.service';
 
+type SeedDocument = {
+  id: number;
+  titulo: string;
+  descricao: string;
+  tipo: string;
+  url: string;
+};
+
 async function run() {
   const meiliService = new MeilisearchService();
+  await meiliService.onModuleInit();
 
-  const documents = [
+  const documents: SeedDocument[] = [
     {
       id: 1,
       titulo: 'Fundamentos em Python',
@@ -27,11 +36,6 @@ async function run() {
     },
   ];
 
-  await meiliService.addDocuments(documents);
+  await meiliService.replaceAllDocuments(documents as any);
   console.log('Seed concluída');
 }
-
-run().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});

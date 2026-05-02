@@ -3,13 +3,13 @@ import { MeilisearchIndexerService } from './meilisearch-indexer.service';
 describe('MeilisearchIndexerService', () => {
   let service: MeilisearchIndexerService;
   let cursoRepository: { find: jest.Mock };
-  let meilisearchService: { addDocuments: jest.Mock };
+  let meilisearchService: { replaceAllDocuments: jest.Mock };
   let loggerWarn: jest.SpyInstance;
   let loggerLog: jest.SpyInstance;
 
   beforeEach(() => {
     cursoRepository = { find: jest.fn() };
-    meilisearchService = { addDocuments: jest.fn() };
+    meilisearchService = { replaceAllDocuments: jest.fn() };
     service = new MeilisearchIndexerService(
       cursoRepository as any,
       meilisearchService as any,
@@ -59,7 +59,7 @@ describe('MeilisearchIndexerService', () => {
     expect(cursoRepository.find).toHaveBeenCalledWith({
       relations: ['modulos', 'modulos.aulas'],
     });
-    expect(meilisearchService.addDocuments).toHaveBeenCalledWith(
+    expect(meilisearchService.replaceAllDocuments).toHaveBeenCalledWith(
       expect.arrayContaining([
         expect.objectContaining({
           id: 'curso-1',
@@ -95,7 +95,7 @@ describe('MeilisearchIndexerService', () => {
 
     await service.reindexCursosEAulas();
 
-    expect(meilisearchService.addDocuments).toHaveBeenCalledWith([
+    expect(meilisearchService.replaceAllDocuments).toHaveBeenCalledWith([
       expect.objectContaining({
         id: 'curso-2',
         categoria: '',
@@ -142,7 +142,7 @@ describe('MeilisearchIndexerService', () => {
 
     await service.reindexCursosEAulas();
 
-    expect(meilisearchService.addDocuments).toHaveBeenCalledWith(
+    expect(meilisearchService.replaceAllDocuments).toHaveBeenCalledWith(
       expect.arrayContaining([
         expect.objectContaining({
           id: 'aula-22',
@@ -168,6 +168,6 @@ describe('MeilisearchIndexerService', () => {
     await service.reindexCursosEAulas();
 
     expect(loggerWarn).toHaveBeenCalled();
-    expect(meilisearchService.addDocuments).not.toHaveBeenCalled();
+    expect(meilisearchService.replaceAllDocuments).not.toHaveBeenCalled();
   });
 });

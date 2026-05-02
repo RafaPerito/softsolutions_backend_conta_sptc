@@ -5,17 +5,7 @@ import { MeilisearchIndexerService } from '../../../infrastructure/search/meilis
 import { VoiceSearchRequestDto } from '../../../infrastructure/search/dtos/voice-search-request.dto';
 import { VoiceSearchResponseDto } from '../../../infrastructure/search/dtos/voice-search-response.dto';
 import { TextSearchQueryDto } from '../../../infrastructure/search/dtos/text-search-query.dto';
-
-type BuscaItem = {
-  id?: number | string;
-  titulo: string;
-  descricao: string;
-  tipo?: string;
-  url?: string;
-  curso?: string;
-  modulo?: string;
-  professor?: string;
-};
+import { SearchItem } from '../../../infrastructure/search/interfaces/search-item.interface';
 
 @Controller('search')
 export class SearchController {
@@ -28,7 +18,7 @@ export class SearchController {
   @Get('text-search')
   async textSearch(
     @Query() query: TextSearchQueryDto,
-  ): Promise<{ results: BuscaItem[] }> {
+  ): Promise<{ results: SearchItem[] }> {
     const results = await this.searchTextUseCase.execute(query.q);
     return { results };
   }

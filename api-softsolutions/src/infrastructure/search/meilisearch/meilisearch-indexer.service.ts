@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { MeilisearchService } from './meilisearch.service';
 import { CursoEntity } from '../../database/entities/curso.entity';
+import { SearchItem } from '../interfaces/search-item.interface';
 
 @Injectable()
 export class MeilisearchIndexerService {
@@ -19,7 +20,7 @@ export class MeilisearchIndexerService {
       relations: ['modulos', 'modulos.aulas'],
     });
 
-    const cursoDocs = cursos.map((curso: any) => ({
+    const cursoDocs: SearchItem[] = cursos.map((curso) => ({
       id: `curso-${curso.id}`,
       tipo: 'curso',
       cursoId: curso.id,
@@ -30,17 +31,17 @@ export class MeilisearchIndexerService {
       tags: [
         curso.categoria,
         curso.professor,
-        ...(curso.modulos?.map((modulo: any) => modulo.nomeModulo) || []),
-      ].filter(Boolean),
+        ...(curso.modulos?.map((modulo) => modulo.nomeModulo) || []),
+      ].filter(Boolean) as string[],
       conteudo: [
         curso.nomeCurso,
         curso.descricaoCurta,
         curso.descricaoDetalhada,
         curso.professor,
         curso.categoria,
-        ...(curso.modulos?.map((modulo: any) => modulo.nomeModulo) || []),
+        ...(curso.modulos?.map((modulo) => modulo.nomeModulo) || []),
         ...(curso.modulos?.flatMap(
-          (modulo: any) => modulo.aulas?.map((aula: any) => aula.nomeAula) || [],
+          (modulo) => modulo.aulas?.map((aula) => aula.nomeAula) || [],
         ) || []),
       ]
         .filter(Boolean)
@@ -56,9 +57,9 @@ export class MeilisearchIndexerService {
       tempoAula: null,
     }));
 
-    const aulaDocs = cursos.flatMap((curso: any) =>
-      (curso.modulos || []).flatMap((modulo: any) =>
-        (modulo.aulas || []).map((aula: any) => ({
+    const aulaDocs: SearchItem[] = cursos.flatMap((curso) =>
+      (curso.modulos || []).flatMap((modulo) =>
+        (modulo.aulas || []).map((aula) => ({
           id: `aula-${aula.id}`,
           tipo: 'aula',
           cursoId: curso.id,
@@ -70,8 +71,8 @@ export class MeilisearchIndexerService {
             curso.categoria,
             curso.professor,
             modulo.nomeModulo,
-            ...(aula.materialApoio || []),
-          ].filter(Boolean),
+            ...(Array.isArray(aula.materialApoio) ? aula.materialApoio : []),
+          ].filter(Boolean) as string[],
           conteudo: [
             aula.nomeAula,
             aula.descricaoConteudo,
@@ -81,7 +82,7 @@ export class MeilisearchIndexerService {
             curso.descricaoDetalhada,
             curso.categoria,
             curso.professor,
-            ...(aula.materialApoio || []),
+            ...(Array.isArray(aula.materialApoio) ? aula.materialApoio : []),
           ]
             .filter(Boolean)
             .join(' '),
@@ -105,7 +106,7 @@ export class MeilisearchIndexerService {
       return;
     }
 
-    await this.meilisearchService.addDocuments(documents as any);
+    await this.meilisearchService.replaceAllDocuments(documents);
 
     this.logger.log(
       `Indexação concluída: ${cursoDocs.length} cursos e ${aulaDocs.length} aulas enviados ao Meilisearch.`,

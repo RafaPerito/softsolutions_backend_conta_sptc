@@ -35,15 +35,8 @@ export class MeilisearchService implements OnModuleInit {
         apiKey,
       });
 
-      try {
-        const health = await this.client.health();
-        this.logger.log(`Meilisearch online. Status: ${health?.status ?? 'unknown'}`);
-      } catch (healthError: any) {
-        this.logger.error(
-          `Falha ao verificar health do Meilisearch em ${host}: ${healthError?.message || healthError}`,
-        );
-        throw healthError;
-      }
+      const health = await this.client.health();
+      this.logger.log(`Meilisearch online. Status: ${health?.status ?? 'unknown'}`);
 
       this.index = this.client.index(this.indexUid);
       await this.configureIndex();
@@ -63,116 +56,91 @@ export class MeilisearchService implements OnModuleInit {
       throw new Error('Índice do Meilisearch não foi inicializado.');
     }
 
-    this.logger.log(`Configurando índice "${this.indexUid}"...`);
+    await this.index.updateSearchableAttributes([
+      'titulo',
+      'curso',
+      'modulo',
+      'descricao',
+      'categoria',
+      'tags',
+      'conteudo',
+      'professor',
+    ]);
 
-    try {
-      await this.index.updateSearchableAttributes([
-        'titulo',
-        'curso',
-        'modulo',
-        'descricao',
-        'categoria',
-        'tags',
-        'conteudo',
-        'professor',
-      ]);
+    await this.index.updateDisplayedAttributes([
+      'id',
+      'tipo',
+      'cursoId',
+      'aulaId',
+      'titulo',
+      'descricao',
+      'categoria',
+      'tags',
+      'conteudo',
+      'professor',
+      'status',
+      'avaliacao',
+      'imagemCurso',
+      'tempoCurso',
+      'modulo',
+      'curso',
+      'videoUrl',
+      'tempoAula',
+    ]);
 
-      await this.index.updateDisplayedAttributes([
-        'id',
-        'tipo',
-        'cursoId',
-        'aulaId',
-        'titulo',
-        'descricao',
-        'categoria',
-        'tags',
-        'conteudo',
-        'professor',
-        'status',
-        'avaliacao',
-        'imagemCurso',
-        'tempoCurso',
-        'modulo',
-        'curso',
-        'videoUrl',
-        'tempoAula',
-      ]);
+    await this.index.updateFilterableAttributes([
+      'tipo',
+      'cursoId',
+      'aulaId',
+      'categoria',
+      'status',
+    ]);
 
-      await this.index.updateFilterableAttributes([
-        'tipo',
-        'cursoId',
-        'aulaId',
-        'categoria',
-        'status',
-      ]);
+    await this.index.updateSortableAttributes([
+      'titulo',
+      'avaliacao',
+      'tempoCurso',
+      'tempoAula',
+    ]);
 
-      await this.index.updateSortableAttributes([
-        'titulo',
-        'avaliacao',
-        'tempoCurso',
-        'tempoAula',
-      ]);
+    await this.index.updateSynonyms({
+      js: ['javascript'],
+      javascript: ['js'],
+      frontend: ['front-end', 'front end'],
+      backend: ['back-end', 'back end'],
+      ia: ['inteligencia artificial', 'inteligência artificial'],
+      banco: ['database', 'bd'],
+      curso: ['aula', 'treinamento'],
+      aula: ['curso', 'lição'],
+      reactnative: ['react native', 'react-native'],
+      'react native': ['reactnative', 'react-native'],
+    });
 
-      await this.index.updateRankingRules([
-        'words',
-        'typo',
-        'proximity',
-        'attribute',
-        'sort',
-        'exactness',
-      ]);
-
-      await this.index.updateSynonyms({
-        js: ['javascript'],
-        javascript: ['js'],
-        frontend: ['front-end', 'front end'],
-        backend: ['back-end', 'back end'],
-        ia: ['inteligencia artificial', 'inteligência artificial'],
-        banco: ['database', 'bd'],
-        curso: ['aula', 'treinamento'],
-        aula: ['curso', 'lição'],
-        reactnative: ['react native', 'react-native'],
-        'react native': ['reactnative', 'react-native'],
-      });
-
-      await this.index.updateStopWords([
-        'de',
-        'da',
-        'do',
-        'das',
-        'dos',
-        'a',
-        'o',
-        'e',
-        'para',
-        'com',
-        'um',
-        'uma',
-        'em',
-      ]);
-
-      this.logger.log(`Configuração do índice "${this.indexUid}" concluída com sucesso.`);
-    } catch (error: any) {
-      this.logger.error(
-        `Erro ao configurar índice "${this.indexUid}": ${error?.message || error}`,
-        error?.stack,
-      );
-      throw error;
-    }
+    await this.index.updateStopWords([
+      'de',
+      'da',
+      'do',
+      'das',
+      'dos',
+      'a',
+      'o',
+      'e',
+      'para',
+      'com',
+      'um',
+      'uma',
+      'em',
+    ]);
   }
 
   async search(query: string): Promise<SearchItem[]> {
-    if (!this.index) {
-      this.logger.warn('Busca ignorada: índice do Meilisearch não está inicializado.');
+    if (!this.index || !query?.trim()) {
       return [];
     }
 
     try {
-      this.logger.log(`Executando busca no índice "${this.indexUid}" com query: "${query}"`);
-      const result = await this.index.search(query, { limit: 10 });
-      const hits = (result?.hits as SearchItem[]) || [];
-      this.logger.log(`Busca concluída com ${hits.length} resultado(s).`);
-      return hits;
+      const result = await this.index.search(query.trim(), { limit: 10 });
+      return (result?.hits as SearchItem[]) || [];
     } catch (error: any) {
       this.logger.error(
         `Erro ao buscar no Meilisearch. Query: "${query}". Motivo: ${error?.message || error}`,
@@ -182,22 +150,16 @@ export class MeilisearchService implements OnModuleInit {
     }
   }
 
-  async addDocuments(documents: SearchItem[]) {
+  async replaceAllDocuments(documents: SearchItem[]) {
     if (!this.index) {
       throw new Error('Índice do Meilisearch não está inicializado.');
     }
 
-    try {
-      this.logger.log(`Indexando ${documents.length} documento(s) no índice "${this.indexUid}".`);
-      const response = await this.index.addDocuments(documents, { primaryKey: 'id' });
-      this.logger.log(`Documentos enviados para indexação com sucesso.`);
-      return response;
-    } catch (error: any) {
-      this.logger.error(
-        `Erro ao indexar documentos no Meilisearch: ${error?.message || error}`,
-        error?.stack,
-      );
-      throw error;
-    }
+    this.logger.log(`Indexando ${documents.length} documentos no índice ${this.indexUid}.`);
+
+    await this.index.deleteAllDocuments();
+    await this.index.addDocuments(documents, { primaryKey: 'id' });
+
+    this.logger.log('Documentos enviados para indexação com sucesso.');
   }
 }

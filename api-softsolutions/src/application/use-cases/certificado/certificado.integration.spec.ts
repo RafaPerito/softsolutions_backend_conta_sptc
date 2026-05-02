@@ -9,9 +9,10 @@ describe('Integração: Emissão de Certificado', () => {
   let usuarioRepo: UsuarioRepository;
   let cursoRepo: CursoRepository;
   let certificadoRepo: CertificadoRepository;
+  let moduleRef: TestingModule;
 
   beforeAll(async () => {
-    const module: TestingModule = await Test.createTestingModule({
+    moduleRef = await Test.createTestingModule({
       imports: [
         TypeOrmModule.forRoot({
           type: 'sqlite',
@@ -24,9 +25,13 @@ describe('Integração: Emissão de Certificado', () => {
       ],
     }).compile();
 
-    usuarioRepo = module.get<UsuarioRepository>(UsuarioRepository);
-    cursoRepo = module.get<CursoRepository>(CursoRepository);
-    certificadoRepo = module.get<CertificadoRepository>(CertificadoRepository);
+    usuarioRepo = moduleRef.get<UsuarioRepository>(UsuarioRepository);
+    cursoRepo = moduleRef.get<CursoRepository>(CursoRepository);
+    certificadoRepo = moduleRef.get<CertificadoRepository>(CertificadoRepository);
+  });
+
+  afterAll(async () => {
+    await moduleRef.close();
   });
 
   it('deve emitir certificado para usuário inscrito em curso', async () => {

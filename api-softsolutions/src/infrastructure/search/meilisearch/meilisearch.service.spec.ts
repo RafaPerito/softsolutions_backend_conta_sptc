@@ -40,6 +40,7 @@ describe('MeilisearchService', () => {
     updateSynonyms: jest.fn().mockResolvedValue(undefined),
     updateStopWords: jest.fn().mockResolvedValue(undefined),
     search: jest.fn().mockResolvedValue({ hits: [{ id: '1' }] }),
+    deleteAllDocuments: jest.fn().mockResolvedValue({ taskUid: 1 }),
     addDocuments: jest.fn().mockResolvedValue({ taskUid: 1 }),
     ...overrides,
   });
@@ -129,7 +130,7 @@ describe('MeilisearchService', () => {
     await service.onModuleInit();
 
     expect(loggerError).toHaveBeenCalledWith(
-      expect.stringContaining('Erro ao configurar'),
+      expect.stringContaining('Erro ao inicializar Meilisearch: config error'),
       expect.any(String),
     );
     expect((service as any).index).toBeNull();
@@ -147,7 +148,6 @@ describe('MeilisearchService', () => {
     (service as any).index = null;
 
     await expect(service.search('node')).resolves.toEqual([]);
-    expect(loggerWarn).toHaveBeenCalled();
   });
 
   it('deve retornar hits da busca quando o índice existir', async () => {
@@ -180,7 +180,7 @@ describe('MeilisearchService', () => {
   it('deve lançar erro ao adicionar documentos sem índice', async () => {
     (service as any).index = null;
 
-    await expect(service.addDocuments([{ id: '1' } as any])).rejects.toThrow(
+    await expect(service.replaceAllDocuments([{ id: '1' } as any])).rejects.toThrow(
       'Índice do Meilisearch não está inicializado.',
     );
   });
@@ -189,9 +189,8 @@ describe('MeilisearchService', () => {
     const index = createIndex();
     (service as any).index = index;
 
-    await expect(service.addDocuments([{ id: '1' } as any])).resolves.toEqual({
-      taskUid: 1,
-    });
+    await expect(service.replaceAllDocuments([{ id: '1' } as any])).resolves.toBeUndefined();
+    expect(index.deleteAllDocuments).toHaveBeenCalled();
     expect(index.addDocuments).toHaveBeenCalledWith([{ id: '1' }], {
       primaryKey: 'id',
     });
@@ -204,12 +203,9 @@ describe('MeilisearchService', () => {
     });
     (service as any).index = index;
 
-    await expect(service.addDocuments([{ id: '1' } as any])).rejects.toThrow(
+    await expect(service.replaceAllDocuments([{ id: '1' } as any])).rejects.toThrow(
       'index failed',
     );
-    expect(loggerError).toHaveBeenCalledWith(
-      expect.stringContaining('Erro ao indexar documentos'),
-      error.stack,
-    );
+    expect(index.deleteAllDocuments).toHaveBeenCalled();
   });
 });

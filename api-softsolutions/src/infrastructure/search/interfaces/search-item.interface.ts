@@ -1,7 +1,20 @@
 export interface SearchItem {
-  id: number | string;
+  id: string;
+  tipo: 'curso' | 'aula';
+  cursoId: number | null;
+  aulaId: number | null;
   titulo: string;
   descricao: string;
-  tipo?: string;
-  url?: string;
+  categoria: string;
+  tags: string[];
+  conteudo: string;
+  professor: string;
+  status: string;
+  avaliacao: number | null;
+  imagemCurso: string;
+  tempoCurso: number | null;
+  modulo: string;
+  curso: string;
+  videoUrl: string;
+  tempoAula: number | null;
 }

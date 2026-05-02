@@ -9,9 +9,10 @@ describe('Integração: Cancelamento de Inscrição', () => {
   let usuarioRepo: UsuarioRepository;
   let cursoRepo: CursoRepository;
   let inscricaoRepo: InscricaoRepository;
+  let moduleRef: TestingModule;
 
   beforeAll(async () => {
-    const module: TestingModule = await Test.createTestingModule({
+    moduleRef = await Test.createTestingModule({
       imports: [
         TypeOrmModule.forRoot({
           type: 'sqlite',
@@ -24,9 +25,13 @@ describe('Integração: Cancelamento de Inscrição', () => {
       ],
     }).compile();
 
-    usuarioRepo = module.get<UsuarioRepository>(UsuarioRepository);
-    cursoRepo = module.get<CursoRepository>(CursoRepository);
-    inscricaoRepo = module.get<InscricaoRepository>(InscricaoRepository);
+    usuarioRepo = moduleRef.get<UsuarioRepository>(UsuarioRepository);
+    cursoRepo = moduleRef.get<CursoRepository>(CursoRepository);
+    inscricaoRepo = moduleRef.get<InscricaoRepository>(InscricaoRepository);
+  });
+
+  afterAll(async () => {
+    await moduleRef.close();
   });
 
   it('deve cancelar inscrição de usuário em curso', async () => {

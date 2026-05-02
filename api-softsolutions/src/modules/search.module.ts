@@ -24,7 +24,6 @@ import { CursoEntity } from '../infrastructure/database/entities/curso.entity';
   exports: [
     MeilisearchService,
     MeilisearchIndexerService,
-    IntentClassifierService,
     SearchTextUseCase,
     SearchVoiceUseCase,
   ],

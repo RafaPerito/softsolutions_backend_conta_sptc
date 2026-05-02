@@ -17,6 +17,6 @@ export class ProgressoAulaEntity implements ProgressoAulaModel {
   @Column({ default: false })
   concluida: boolean;
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ nullable: true })
   dataConclusao?: Date;
 }
