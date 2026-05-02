@@ -12,6 +12,7 @@ COPY . .
 RUN npm run build
 RUN npm prune --production
 
+
 FROM node:20
 
 WORKDIR /app
@@ -25,7 +26,8 @@ COPY --from=builder /app/ormconfig.migration.ts ./ormconfig.migration.ts
 COPY --from=builder /app/tsconfig.json ./tsconfig.json
 COPY --from=builder /app/tsconfig.build.json ./tsconfig.build.json
 
-RUN chmod +x ./scripts/bootstrap.sh ./scripts/await-for-api.sh || true
+RUN sed -i 's/\r$//' ./scripts/bootstrap.sh ./scripts/await-for-api.sh && \
+    chmod +x ./scripts/bootstrap.sh ./scripts/await-for-api.sh
 
 EXPOSE 4000
 
