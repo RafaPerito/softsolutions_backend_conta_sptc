@@ -2,112 +2,116 @@ import { SearchVoiceUseCase } from './search-voice.use-case';
 
 describe('SearchVoiceUseCase', () => {
   let useCase: SearchVoiceUseCase;
-  let mockIntentClassifier: any;
+  let mockQueryUnderstandingService: any;
   let mockSearchTextUseCase: any;
 
   beforeEach(() => {
-    mockIntentClassifier = {
-      classify: jest.fn(),
+    mockQueryUnderstandingService = {
+      process: jest.fn(),
     };
     mockSearchTextUseCase = {
       execute: jest.fn(),
     };
     useCase = new SearchVoiceUseCase(
-      mockIntentClassifier,
+      mockQueryUnderstandingService,
       mockSearchTextUseCase,
     );
   });
 
-  it('deve buscar usando filteredTokens para intenções mapeadas', async () => {
-    mockIntentClassifier.classify.mockReturnValue({
+  it('deve montar a resposta usando o processamento da query de voz', async () => {
+    mockQueryUnderstandingService.process.mockResolvedValue({
       originalText: 'buscar curso python',
       normalizedText: 'buscar curso python',
       tokens: ['buscar', 'curso', 'python'],
       filteredTokens: ['curso', 'python'],
       stems: ['curs', 'python'],
-      intent: 'buscar_curso',
+      intent: 'embedding_generated',
       confidence: 0.8,
-      rankings: [{ label: 'buscar_curso', value: 0.8 }],
+      rankings: [{ label: 'embedding_generated', value: 0.8 }],
+      finalQuery: 'curso python',
+      querySource: 'filteredTokens',
+      matchedTerms: ['curso', 'python'],
     });
     mockSearchTextUseCase.execute.mockResolvedValue([{ id: 1 }]);
 
     const result = await useCase.execute({ text: 'buscar curso python' });
 
-    expect(mockIntentClassifier.classify).toHaveBeenCalledWith(
+    expect(mockQueryUnderstandingService.process).toHaveBeenCalledWith(
       'buscar curso python',
     );
-    expect(mockSearchTextUseCase.execute).toHaveBeenCalledWith('curso python');
+    expect(mockSearchTextUseCase.execute).toHaveBeenCalledWith(
+      'buscar curso python',
+    );
+    expect(result.searchQuery).toBe('curso python');
     expect(result.querySource).toBe('filteredTokens');
     expect(result.matchedTerms).toEqual(['curso', 'python']);
-    expect(result.rankings).toEqual([{ label: 'buscar_curso', value: 0.8 }]);
+    expect(result.rankings).toEqual([
+      { label: 'embedding_generated', value: 0.8 },
+    ]);
+    expect(result.results).toEqual([{ id: 1 }]);
   });
 
-  it('deve usar normalizedText quando filteredTokens vier vazio', async () => {
-    mockIntentClassifier.classify.mockReturnValue({
+  it('deve usar normalizedText quando finalQuery vier ausente', async () => {
+    mockQueryUnderstandingService.process.mockResolvedValue({
       originalText: 'node avançado',
-      normalizedText: 'node avançado',
-      tokens: ['node', 'avançado'],
+      normalizedText: 'node avancado',
+      tokens: ['node', 'avancado'],
       filteredTokens: [],
       stems: ['node', 'avanc'],
       intent: 'desconhecida',
       confidence: 0.3,
       rankings: [],
+      querySource: 'normalizedText',
     });
     mockSearchTextUseCase.execute.mockResolvedValue([]);
 
     const result = await useCase.execute({ text: 'node avançado' });
 
     expect(mockSearchTextUseCase.execute).toHaveBeenCalledWith('node avançado');
+    expect(result.searchQuery).toBe('node avancado');
     expect(result.querySource).toBe('normalizedText');
-    expect(result.matchedTerms).toEqual(['node', 'avançado']);
+    expect(result.matchedTerms).toEqual(['node', 'avancado']);
   });
 
-  it('deve cair no default e preferir filteredTokens quando houver tokens', async () => {
-    mockIntentClassifier.classify.mockReturnValue({
-      originalText: 'mostrar novidades backend',
-      normalizedText: 'mostrar novidades backend',
-      tokens: ['mostrar', 'novidades', 'backend'],
-      filteredTokens: ['novidades', 'backend'],
-      stems: ['novidad', 'backend'],
-      intent: 'outra_intencao',
-      confidence: 0.5,
-      rankings: [],
-    });
-    mockSearchTextUseCase.execute.mockResolvedValue([{ id: 2 }]);
-
-    const result = await useCase.execute({ text: 'mostrar novidades backend' });
-
-    expect(result.searchQuery).toBe('novidades backend');
-    expect(result.querySource).toBe('filteredTokens');
-    expect(result.matchedTerms).toEqual(['novidades', 'backend']);
-  });
-
-  it('deve não chamar searchTextUseCase quando searchQuery ficar vazia', async () => {
-    mockIntentClassifier.classify.mockReturnValue({
+  it('deve retornar arrays default quando campos opcionais vierem ausentes', async () => {
+    mockQueryUnderstandingService.process.mockResolvedValue({
       originalText: '   ',
-      normalizedText: '   ',
-      tokens: [],
-      filteredTokens: [],
-      stems: [],
+      normalizedText: '',
       intent: 'pesquisar',
       confidence: 0,
-      rankings: [],
     });
+    mockSearchTextUseCase.execute.mockResolvedValue([]);
 
     const result = await useCase.execute({ text: '   ' });
 
-    expect(mockSearchTextUseCase.execute).not.toHaveBeenCalled();
+    expect(mockSearchTextUseCase.execute).toHaveBeenCalledWith('   ');
     expect(result.searchQuery).toBe('');
+    expect(result.querySource).toBe('normalizedText');
+    expect(result.tokens).toEqual([]);
+    expect(result.filteredTokens).toEqual([]);
+    expect(result.stems).toEqual([]);
+    expect(result.rankings).toEqual([]);
+    expect(result.matchedTerms).toEqual([]);
     expect(result.results).toEqual([]);
   });
 
-  it('deve expor o branch default do buildSearchQuery diretamente', () => {
-    expect(
-      (useCase as any).buildSearchQuery('intencao_x', ['backend'], 'backend curso'),
-    ).toEqual({
-      searchQuery: 'backend',
-      querySource: 'filteredTokens',
+  it('deve normalizar rankings para label e value', async () => {
+    mockQueryUnderstandingService.process.mockResolvedValue({
+      originalText: 'backend',
+      normalizedText: 'backend',
+      intent: 'embedding_generated',
+      confidence: 1,
+      rankings: [
+        { label: 'embedding_generated', value: 1, extra: 'ignorado' },
+      ],
       matchedTerms: ['backend'],
     });
+    mockSearchTextUseCase.execute.mockResolvedValue([{ id: 2 }]);
+
+    const result = await useCase.execute({ text: 'backend' });
+
+    expect(result.rankings).toEqual([
+      { label: 'embedding_generated', value: 1 },
+    ]);
   });
 });

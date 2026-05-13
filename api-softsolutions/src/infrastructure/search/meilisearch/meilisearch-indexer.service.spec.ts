@@ -1,29 +1,44 @@
+import { CursoEntity } from '../../database/entities/curso.entity';
 import { MeilisearchIndexerService } from './meilisearch-indexer.service';
 
 describe('MeilisearchIndexerService', () => {
   let service: MeilisearchIndexerService;
   let cursoRepository: { find: jest.Mock };
+  let dataSource: { getRepository: jest.Mock };
+  let queryUnderstanding: { process: jest.Mock };
   let meilisearchService: { replaceAllDocuments: jest.Mock };
   let loggerWarn: jest.SpyInstance;
   let loggerLog: jest.SpyInstance;
+  let consoleError: jest.SpyInstance;
 
   beforeEach(() => {
     cursoRepository = { find: jest.fn() };
+    dataSource = {
+      getRepository: jest.fn().mockReturnValue(cursoRepository),
+    };
+    queryUnderstanding = {
+      process: jest.fn().mockResolvedValue({ embedding: [0.1, 0.2] }),
+    };
     meilisearchService = { replaceAllDocuments: jest.fn() };
+
     service = new MeilisearchIndexerService(
-      cursoRepository as any,
+      dataSource as any,
+      queryUnderstanding as any,
       meilisearchService as any,
     );
+
     loggerWarn = jest.spyOn((service as any).logger, 'warn').mockImplementation();
     loggerLog = jest.spyOn((service as any).logger, 'log').mockImplementation();
+    consoleError = jest.spyOn(console, 'error').mockImplementation();
   });
 
   afterEach(() => {
     loggerWarn.mockRestore();
     loggerLog.mockRestore();
+    consoleError.mockRestore();
   });
 
-  it('deve indexar cursos e aulas com os campos esperados', async () => {
+  it('deve indexar cursos e aulas com embeddings e campos esperados', async () => {
     cursoRepository.find.mockResolvedValue([
       {
         id: 1,
@@ -44,7 +59,6 @@ describe('MeilisearchIndexerService', () => {
                 id: 10,
                 nomeAula: 'Nest',
                 descricaoConteudo: 'Controllers',
-                materialApoio: ['pdf'],
                 videoUrl: 'video',
                 tempoAula: 15,
               },
@@ -54,29 +68,41 @@ describe('MeilisearchIndexerService', () => {
       },
     ]);
 
-    await service.reindexCursosEAulas();
+    const result = await service.reindexCursosEAulas();
 
+    expect(dataSource.getRepository).toHaveBeenCalledWith(CursoEntity);
     expect(cursoRepository.find).toHaveBeenCalledWith({
       relations: ['modulos', 'modulos.aulas'],
     });
+    expect(queryUnderstanding.process).toHaveBeenCalledTimes(2);
     expect(meilisearchService.replaceAllDocuments).toHaveBeenCalledWith(
       expect.arrayContaining([
         expect.objectContaining({
           id: 'curso-1',
           tipo: 'curso',
           titulo: 'Curso Node',
+          _vectors: { default: [0.1, 0.2] },
         }),
         expect.objectContaining({
           id: 'aula-10',
           tipo: 'aula',
           titulo: 'Nest',
           modulo: 'API',
+          videoUrl: 'video',
+          tempoAula: 15,
+          _vectors: { default: [0.1, 0.2] },
         }),
       ]),
     );
+    expect(result).toEqual({
+      success: true,
+      totalDocuments: 2,
+      cursosComEmbedding: 1,
+      aulasComEmbedding: 1,
+    });
   });
 
-  it('deve usar fallback e não falhar com módulos ou aulas ausentes', async () => {
+  it('deve aplicar fallbacks quando campos opcionais vierem ausentes', async () => {
     cursoRepository.find.mockResolvedValue([
       {
         id: 2,
@@ -92,82 +118,125 @@ describe('MeilisearchIndexerService', () => {
         modulos: undefined,
       },
     ]);
+    queryUnderstanding.process.mockResolvedValue({ embedding: undefined });
 
-    await service.reindexCursosEAulas();
+    const result = await service.reindexCursosEAulas();
 
     expect(meilisearchService.replaceAllDocuments).toHaveBeenCalledWith([
       expect.objectContaining({
         id: 'curso-2',
+        descricao: '',
+        descricaoDetalhada: '',
         categoria: '',
+        conteudo: '',
         professor: '',
+        status: 'ativo',
+        avaliacao: 0,
+        imagemCurso: null,
         tempoCurso: null,
+        modulo: null,
+        videoUrl: null,
       }),
     ]);
+    expect(result).toMatchObject({
+      totalDocuments: 1,
+      cursosComEmbedding: 0,
+      aulasComEmbedding: 0,
+    });
   });
 
-  it('deve aplicar fallbacks também nos documentos de aula', async () => {
+  it('deve continuar indexando quando gerar embedding de curso falhar', async () => {
     cursoRepository.find.mockResolvedValue([
       {
         id: 3,
-        nomeCurso: 'Curso Aulas',
+        nomeCurso: 'Curso Falha',
         descricaoCurta: '',
         descricaoDetalhada: '',
-        categoria: '',
-        professor: '',
-        status: '',
-        avaliacao: undefined,
-        imagemCurso: '',
-        tempoCurso: undefined,
+        modulos: [],
+      },
+    ]);
+    queryUnderstanding.process.mockRejectedValue(new Error('embedding error'));
+
+    const result = await service.reindexCursosEAulas();
+
+    expect(loggerWarn).toHaveBeenCalledWith(expect.stringContaining('curso 3'));
+    expect(consoleError).toHaveBeenCalledWith(expect.any(Error));
+    expect(meilisearchService.replaceAllDocuments).toHaveBeenCalledWith([
+      expect.not.objectContaining({ _vectors: expect.anything() }),
+    ]);
+    expect(result).toMatchObject({
+      success: true,
+      totalDocuments: 1,
+      cursosComEmbedding: 0,
+    });
+  });
+
+  it('deve continuar indexando quando gerar embedding de aula falhar', async () => {
+    cursoRepository.find.mockResolvedValue([
+      {
+        id: 4,
+        nomeCurso: 'Curso Aula',
+        descricaoCurta: '',
+        descricaoDetalhada: '',
         modulos: [
           {
-            nomeModulo: '',
+            nomeModulo: undefined,
             aulas: [
               {
-                id: 22,
-                nomeAula: 'Aula sem extras',
+                id: 40,
+                nomeAula: 'Aula Falha',
                 descricaoConteudo: undefined,
-                materialApoio: undefined,
+                status: undefined,
                 videoUrl: undefined,
                 tempoAula: undefined,
               },
             ],
           },
-          {
-            nomeModulo: 'Vazio',
-            aulas: undefined,
-          },
         ],
       },
     ]);
+    queryUnderstanding.process
+      .mockResolvedValueOnce({ embedding: [0.5] })
+      .mockRejectedValueOnce(new Error('aula embedding error'));
 
-    await service.reindexCursosEAulas();
+    const result = await service.reindexCursosEAulas();
 
+    expect(loggerWarn).toHaveBeenCalledWith(expect.stringContaining('aula 40'));
     expect(meilisearchService.replaceAllDocuments).toHaveBeenCalledWith(
       expect.arrayContaining([
         expect.objectContaining({
-          id: 'aula-22',
+          id: 'aula-40',
           descricao: '',
           categoria: '',
-          tags: [],
-          conteudo: 'Aula sem extras Curso Aulas',
           professor: '',
-          status: '',
-          avaliacao: null,
+          status: 'ativo',
+          avaliacao: 0,
+          imagemCurso: null,
           tempoCurso: null,
           modulo: '',
-          videoUrl: '',
+          videoUrl: null,
           tempoAula: null,
         }),
       ]),
     );
+    expect(result).toMatchObject({
+      totalDocuments: 2,
+      cursosComEmbedding: 1,
+      aulasComEmbedding: 0,
+    });
   });
 
-  it('deve fazer early return quando não houver documentos', async () => {
+  it('deve enviar lista vazia quando nao houver cursos', async () => {
     cursoRepository.find.mockResolvedValue([]);
 
-    await service.reindexCursosEAulas();
+    const result = await service.reindexCursosEAulas();
 
-    expect(loggerWarn).toHaveBeenCalled();
-    expect(meilisearchService.replaceAllDocuments).not.toHaveBeenCalled();
+    expect(meilisearchService.replaceAllDocuments).toHaveBeenCalledWith([]);
+    expect(result).toEqual({
+      success: true,
+      totalDocuments: 0,
+      cursosComEmbedding: 0,
+      aulasComEmbedding: 0,
+    });
   });
 });
