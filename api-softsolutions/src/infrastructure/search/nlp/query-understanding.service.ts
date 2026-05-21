@@ -1,16 +1,29 @@
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+} from '@nestjs/common';
+
+import {
+  SEMANTIC_KNOWLEDGE,
+} from './semantic-knowledge.dictionary';
+
+import { IntentClassifierService } from './intent-classifier.service';
 
 interface ProcessedQuery {
   originalText: string;
+
   normalizedText: string;
 
   intent: string;
+
   confidence: number;
 
   embedding?: number[];
 
   tokens?: string[];
+
   filteredTokens?: string[];
+
   stems?: string[];
 
   rankings?: {
@@ -18,30 +31,46 @@ interface ProcessedQuery {
     value: number;
   }[];
 
-  finalQuery?: string;
-
-  querySource?: 'filteredTokens' | 'normalizedText';
-
   matchedTerms?: string[];
+
+  synonyms?: string[];
+
+  concepts?: string[];
+
+  relatedTerms?: string[];
+
+  boostTerms?: string[];
+
+  exclusions?: string[];
+
+  categories?: string[];
+
+  expandedQuery?: string;
 }
 
 @Injectable()
 export class QueryUnderstandingService {
-  private readonly logger = new Logger(
-    QueryUnderstandingService.name,
-  );
+  private readonly logger =
+    new Logger(
+      QueryUnderstandingService.name,
+    );
 
-  private transformerInitialized = false;
+  private transformerInitialized =
+    false;
 
   private embeddingPipeline: any;
 
-  constructor() {
+  constructor(
+    private readonly intentClassifier: IntentClassifierService,
+  ) {
     this.logger.log(
       '🔥 QueryUnderstandingService instanciado',
     );
   }
 
-  private normalize(text: string): string {
+  private normalize(
+    text: string,
+  ): string {
     return (text ?? '')
       .toLowerCase()
       .normalize('NFD')
@@ -51,40 +80,101 @@ export class QueryUnderstandingService {
       .trim();
   }
 
+  private extractSemanticContext(
+    tokens: string[],
+  ) {
+    const synonyms =
+      new Set<string>();
+
+    const concepts =
+      new Set<string>();
+
+    const relatedTerms =
+      new Set<string>();
+
+    const boostTerms =
+      new Set<string>();
+
+    const exclusions =
+      new Set<string>();
+
+    const categories =
+      new Set<string>();
+
+    for (const token of tokens) {
+      const knowledge =
+        SEMANTIC_KNOWLEDGE[token];
+
+      if (!knowledge) continue;
+
+      knowledge.synonyms.forEach(
+        (s) => synonyms.add(s),
+      );
+
+      knowledge.concepts.forEach(
+        (c) => concepts.add(c),
+      );
+
+      knowledge.relatedTerms.forEach(
+        (r) => relatedTerms.add(r),
+      );
+
+      knowledge.boostTerms.forEach(
+        (b) => boostTerms.add(b),
+      );
+
+      knowledge.exclusions?.forEach(
+        (e) => exclusions.add(e),
+      );
+
+      categories.add(
+        knowledge.category,
+      );
+    }
+
+    return {
+      synonyms: [...synonyms],
+
+      concepts: [...concepts],
+
+      relatedTerms: [
+        ...relatedTerms,
+      ],
+
+      boostTerms: [...boostTerms],
+
+      exclusions: [...exclusions],
+
+      categories: [...categories],
+    };
+  }
+
   private async initTransformers() {
-    if (this.transformerInitialized) {
+    if (
+      this.transformerInitialized
+    ) {
       return;
     }
 
-    this.logger.log(
-      '🚀 Inicializando Transformers.js...',
-    );
-
     try {
-      const tf = await import('@xenova/transformers');
-
-      this.logger.log(
-        '📦 Carregando embedding pipeline...',
+      const tf = await import(
+        '@xenova/transformers'
       );
 
-      this.embeddingPipeline = await tf.pipeline(
-        'feature-extraction',
-        'Xenova/all-MiniLM-L6-v2',
-      );
+      this.embeddingPipeline =
+        await tf.pipeline(
+          'feature-extraction',
+          'Xenova/all-MiniLM-L6-v2',
+        );
 
-      this.transformerInitialized = true;
-
-      this.logger.log(
-        '✅ Embedding pipeline carregado com sucesso.',
-      );
-    } catch (error: any) {
+      this.transformerInitialized =
+        true;
+    } catch (error) {
       this.logger.error(
-        '❌ Erro ao inicializar Transformers.js',
+        'Erro Transformers',
       );
 
       console.error(error);
-
-      throw error;
     }
   }
 
@@ -93,94 +183,111 @@ export class QueryUnderstandingService {
   ): Promise<ProcessedQuery> {
     const text = originalText ?? '';
 
-    const normalizedText = this.normalize(text);
+    const normalizedText =
+      this.normalize(text);
 
-    if (!normalizedText) {
-      return {
-        originalText: text,
+    const classification =
+      this.intentClassifier.classify(
         normalizedText,
-
-        intent: 'desconhecida',
-        confidence: 0,
-
-        tokens: [],
-        filteredTokens: [],
-        stems: [],
-
-        rankings: [],
-
-        finalQuery: '',
-
-        querySource: 'normalizedText',
-
-        matchedTerms: [],
-      };
-    }
-
-    await this.initTransformers();
-
-    let embedding: number[] | undefined;
-
-    try {
-      this.logger.log(
-        `🧠 Gerando embedding para: "${normalizedText.slice(0, 80)}"`,
       );
-
-      const tensor = await this.embeddingPipeline(
-        normalizedText,
-        {
-          pooling: 'mean',
-          normalize: true,
-          quantize: false,
-        },
-      );
-
-      if (tensor?.data) {
-        embedding = Array.from(tensor.data);
-      }
-
-      if (embedding && embedding.length > 0) {
-        this.logger.log(
-          `✅ Embedding gerado com ${embedding.length} dimensões.`,
-        );
-      } else {
-        this.logger.warn(
-          '⚠️ Embedding vazio ou inválido.',
-        );
-      }
-    } catch (error: any) {
-      this.logger.error(
-        '❌ Falha ao gerar embedding',
-      );
-
-      console.error(error);
-    }
 
     const tokens = normalizedText
       .split(/\s+/)
       .filter(Boolean);
 
+    const semanticContext =
+      this.extractSemanticContext(
+        tokens,
+      );
+
+    const expandedQuery = [
+      normalizedText,
+      ...semanticContext.synonyms,
+      ...semanticContext.concepts,
+      ...semanticContext.relatedTerms,
+      ...semanticContext.boostTerms,
+    ]
+      .join(' ')
+      .trim();
+
+    await this.initTransformers();
+
+    let embedding:
+      | number[]
+      | undefined;
+
+    try {
+      const tensor =
+        await this.embeddingPipeline(
+          expandedQuery,
+          {
+            pooling: 'mean',
+            normalize: true,
+          },
+        );
+
+      if (tensor?.data) {
+        embedding = Array.from(
+          tensor.data,
+        );
+      }
+    } catch (error) {
+      this.logger.error(
+        'Erro embedding',
+      );
+
+      console.error(error);
+    }
+
     return {
       originalText: text,
+
       normalizedText,
 
-      intent: 'embedding_generated',
+      intent:
+        classification.intent,
 
-      confidence: embedding ? 1 : 0,
+      confidence:
+        classification.confidence,
 
       embedding,
 
       tokens,
-      filteredTokens: tokens,
-      stems: tokens,
 
-      rankings: [],
+      filteredTokens:
+        classification.filteredTokens,
 
-      finalQuery: normalizedText,
+      stems:
+        classification.stems,
 
-      querySource: 'normalizedText',
+      rankings:
+        classification.rankings,
 
-      matchedTerms: tokens,
+      matchedTerms: [
+        ...tokens,
+        ...semanticContext.synonyms,
+        ...semanticContext.concepts,
+      ],
+
+      synonyms:
+        semanticContext.synonyms,
+
+      concepts:
+        semanticContext.concepts,
+
+      relatedTerms:
+        semanticContext.relatedTerms,
+
+      boostTerms:
+        semanticContext.boostTerms,
+
+      exclusions:
+        semanticContext.exclusions,
+
+      categories:
+        semanticContext.categories,
+
+      expandedQuery,
     };
   }
 }

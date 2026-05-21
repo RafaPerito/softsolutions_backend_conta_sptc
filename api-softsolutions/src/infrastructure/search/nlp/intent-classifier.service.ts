@@ -1,29 +1,58 @@
 import { Injectable } from '@nestjs/common';
+
 import * as natural from 'natural';
-import { removeStopwords, porBr } from 'stopword';
+
+import {
+  removeStopwords,
+  porBr,
+} from 'stopword';
+
 import {
   IntentClassifier,
   IntentClassificationResult,
 } from '../interfaces/intent-classifier.interface';
 
 @Injectable()
-export class IntentClassifierService implements IntentClassifier {
-  private readonly tokenizer = new natural.WordTokenizer();
-  private readonly classifier = new natural.BayesClassifier();
-  private readonly fallbackIntent = 'desconhecida';
-  private readonly confidenceThreshold = 0.35;
+export class IntentClassifierService
+  implements IntentClassifier
+{
+  private readonly tokenizer =
+    new natural.WordTokenizer();
+
+  private readonly classifier =
+    new natural.BayesClassifier();
+
+  private readonly fallbackIntent =
+    'desconhecida';
+
+  private readonly confidenceThreshold =
+    0.25;
 
   constructor() {
     this.train();
   }
 
-  classify(text: string): IntentClassificationResult {
+  classify(
+    text: string,
+  ): IntentClassificationResult {
     const originalText = text ?? '';
-    const normalizedText = this.normalizeText(originalText);
-    const tokens = this.tokenize(normalizedText);
-    const filteredTokens = this.removeStopWords(tokens);
-    const stems = filteredTokens.map((token) => this.stem(token));
-    const processedText = stems.join(' ').trim();
+
+    const normalizedText =
+      this.normalizeText(originalText);
+
+    const tokens =
+      this.tokenize(normalizedText);
+
+    const filteredTokens =
+      this.removeStopWords(tokens);
+
+    const stems = filteredTokens.map(
+      (token) => this.stem(token),
+    );
+
+    const processedText = stems
+      .join(' ')
+      .trim();
 
     if (!processedText) {
       return {
@@ -38,11 +67,17 @@ export class IntentClassifierService implements IntentClassifier {
       };
     }
 
-    const classifications = this.classifier.getClassifications(processedText);
+    const classifications =
+      this.classifier.getClassifications(
+        processedText,
+      );
+
     const best = classifications[0];
 
     const bestIntent =
-      best && best.value >= this.confidenceThreshold
+      best &&
+      best.value >=
+        this.confidenceThreshold
         ? best.label
         : this.fallbackIntent;
 
@@ -54,41 +89,218 @@ export class IntentClassifierService implements IntentClassifier {
       stems,
       intent: bestIntent,
       confidence: best?.value ?? 0,
-      rankings: classifications.map((item) => ({
-        label: item.label,
-        value: item.value,
-      })),
+      rankings: classifications.map(
+        (item) => ({
+          label: item.label,
+          value: item.value,
+        }),
+      ),
     };
   }
 
   private train(): void {
-    const samples: Array<{ text: string; intent: string }> = [
-      // samples mantidos
-      { text: 'quero buscar curso de python', intent: 'buscar_curso' },
-      // ... (mantenha os demais exemplos do seu arquivo original)
+    const samples: Array<{
+      text: string;
+      intent: string;
+    }> = [
+      // ====================================================
+      // CURSOS
+      // ====================================================
+
+      {
+        text: 'curso de python',
+        intent: 'buscar_curso',
+      },
+
+      {
+        text: 'curso de java',
+        intent: 'buscar_curso',
+      },
+
+      {
+        text: 'curso de javascript',
+        intent: 'buscar_curso',
+      },
+
+      {
+        text: 'curso de frontend',
+        intent: 'buscar_curso',
+      },
+
+      {
+        text: 'curso backend',
+        intent: 'buscar_curso',
+      },
+
+      {
+        text: 'curso de docker',
+        intent: 'buscar_curso',
+      },
+
+      {
+        text: 'curso de sql',
+        intent: 'buscar_curso',
+      },
+
+      {
+        text: 'quero estudar backend',
+        intent: 'buscar_curso',
+      },
+
+      {
+        text: 'quero aprender frontend',
+        intent: 'buscar_curso',
+      },
+
+      {
+        text: 'quero aprender programacao',
+        intent: 'buscar_curso',
+      },
+
+      {
+        text: 'quero estudar tecnologia',
+        intent: 'buscar_curso',
+      },
+
+      // ====================================================
+      // AULAS
+      // ====================================================
+
+      {
+        text: 'buscar aulas',
+        intent: 'buscar_aula',
+      },
+
+      {
+        text: 'aulas de docker',
+        intent: 'buscar_aula',
+      },
+
+      {
+        text: 'video aula de sql',
+        intent: 'buscar_aula',
+      },
+
+      {
+        text: 'aula de python',
+        intent: 'buscar_aula',
+      },
+
+      {
+        text: 'conteudo sobre backend',
+        intent: 'buscar_aula',
+      },
+
+      // ====================================================
+      // CERTIFICADO
+      // ====================================================
+
+      {
+        text: 'meu certificado',
+        intent: 'certificado',
+      },
+
+      {
+        text: 'emitir certificado',
+        intent: 'certificado',
+      },
+
+      {
+        text: 'baixar certificado',
+        intent: 'certificado',
+      },
+
+      // ====================================================
+      // LOGIN
+      // ====================================================
+
+      {
+        text: 'nao consigo entrar',
+        intent: 'login',
+      },
+
+      {
+        text: 'erro no login',
+        intent: 'login',
+      },
+
+      {
+        text: 'senha invalida',
+        intent: 'login',
+      },
+
+      {
+        text: 'nao consigo acessar',
+        intent: 'login',
+      },
+
+      // ====================================================
+      // IA
+      // ====================================================
+
+      {
+        text: 'curso de inteligencia artificial',
+        intent: 'buscar_ia',
+      },
+
+      {
+        text: 'machine learning',
+        intent: 'buscar_ia',
+      },
+
+      {
+        text: 'deep learning',
+        intent: 'buscar_ia',
+      },
+
+      {
+        text: 'chatgpt',
+        intent: 'buscar_ia',
+      },
+
+      {
+        text: 'curso de ia',
+        intent: 'buscar_ia',
+      },
     ];
 
     for (const sample of samples) {
-      const processed = this.preprocess(sample.text);
+      const processed =
+        this.preprocess(sample.text);
 
       if (processed) {
-        this.classifier.addDocument(processed, sample.intent);
+        this.classifier.addDocument(
+          processed,
+          sample.intent,
+        );
       }
     }
 
     this.classifier.train();
   }
 
-  private preprocess(text: string): string {
-    const normalizedText = this.normalizeText(text);
-    const tokens = this.tokenize(normalizedText);
-    const filteredTokens = this.removeStopWords(tokens);
-    const stems = filteredTokens.map((token) => this.stem(token));
+  private preprocess(
+    text: string,
+  ): string {
+    const normalizedText =
+      this.normalizeText(text);
+
+    const tokens =
+      this.tokenize(normalizedText);
+
+    const filteredTokens =
+      this.removeStopWords(tokens);
+
+    const stems = filteredTokens.map(
+      (token) => this.stem(token),
+    );
 
     return stems.join(' ').trim();
   }
 
-  private normalizeText(text: string): string {
+  private normalizeText(
+    text: string,
+  ): string {
     return text
       .toLowerCase()
       .normalize('NFD')
@@ -98,40 +310,58 @@ export class IntentClassifierService implements IntentClassifier {
       .trim();
   }
 
-  private tokenize(text: string): string[] {
-    return (this.tokenizer.tokenize(text) ?? []).filter(Boolean);
+  private tokenize(
+    text: string,
+  ): string[] {
+    return (
+      this.tokenizer.tokenize(text) ?? []
+    ).filter(Boolean);
   }
 
-  private removeStopWords(tokens: string[]): string[] {
+  private removeStopWords(
+    tokens: string[],
+  ): string[] {
     const customStopwords = [
       'quero',
       'gostaria',
       'buscar',
       'busque',
       'procure',
-      'procurar',
       'pesquisar',
-      'pesquise',
-      'encontre',
-      'achar',
-      'ver',
-      'mostra',
       'mostrar',
+      'mostre',
       'me',
       'pra',
       'pro',
       'tem',
       'quais',
-      'voces',
       'voce',
+      'voces',
+      'sobre',
+      'de',
+      'do',
+      'da',
+      'dos',
+      'das',
+      'o',
+      'a',
+      'os',
+      'as',
+      'um',
+      'uma',
     ];
 
-    return removeStopwords(tokens, [...porBr, ...customStopwords]).filter(
+    return removeStopwords(tokens, [
+      ...porBr,
+      ...customStopwords,
+    ]).filter(
       (token) => token.length > 1,
     );
   }
 
   private stem(token: string): string {
-    return natural.PorterStemmerPt.stem(token);
+    return natural.PorterStemmerPt.stem(
+      token,
+    );
   }
 }

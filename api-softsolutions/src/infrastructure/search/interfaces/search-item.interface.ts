@@ -17,4 +17,10 @@ export interface SearchItem {
   curso: string;
   videoUrl: string;
   tempoAula: number | null;
+  semanticTags?: string[];
+  semanticConcepts?: string[];
+  semanticCategories?: string[];
+  semanticScore?: number;
+  vectorScore?: number;
+  searchableText?: string[];
 }
