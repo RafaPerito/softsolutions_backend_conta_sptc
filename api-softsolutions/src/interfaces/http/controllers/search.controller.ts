@@ -13,6 +13,8 @@ import { SearchVoiceUseCase } from '../../../application/use-cases/search/search
 
 import { MeilisearchIndexerService } from '../../../infrastructure/search/meilisearch/meilisearch-indexer.service';
 
+import { MeilisearchService } from '../../../infrastructure/search/meilisearch/meilisearch.service';
+
 import { VoiceSearchRequestDto } from '../../../infrastructure/search/dtos/voice-search-request.dto';
 
 import { VoiceSearchResponseDto } from '../../../infrastructure/search/dtos/voice-search-response.dto';
@@ -29,7 +31,13 @@ export class SearchController {
     private readonly searchVoiceUseCase: SearchVoiceUseCase,
 
     private readonly meilisearchIndexerService: MeilisearchIndexerService,
+
+    private readonly meilisearchService: MeilisearchService,
   ) {}
+
+  // ====================================================
+  // TEXT SEARCH
+  // ====================================================
 
   @Get('text-search')
   async textSearch(
@@ -55,29 +63,35 @@ export class SearchController {
     };
   }
 
+  // ====================================================
+  // AUTOCOMPLETE
+  // ====================================================
+
   @Get('autocomplete')
   async autocomplete(
     @Query('q') q: string,
   ): Promise<{
     suggestions: string[];
   }> {
-    const results =
-      await this.searchTextUseCase.execute(
+    if (!q?.trim()) {
+      return {
+        suggestions: [],
+      };
+    }
+
+    const suggestions =
+      await this.meilisearchService.getSuggestions(
         q,
       );
-
-    const suggestions = [
-      ...new Set(
-        results
-          .map((item) => item.titulo)
-          .filter(Boolean),
-      ),
-    ].slice(0, 8);
 
     return {
       suggestions,
     };
   }
+
+  // ====================================================
+  // VOICE SEARCH
+  // ====================================================
 
   @Post('voice')
   @HttpCode(200)
@@ -88,6 +102,10 @@ export class SearchController {
       dto,
     );
   }
+
+  // ====================================================
+  // REINDEX
+  // ====================================================
 
   @Post('reindex')
   @HttpCode(200)

@@ -16,6 +16,25 @@ export interface SemanticKnowledgeEntry {
   searchPriority: number;
 }
 
+// ====================================================
+// AMBIGUOUS TERMS
+// ====================================================
+
+export const AMBIGUOUS_TERMS: Record<
+  string,
+  string[]
+> = {
+  java: ['javascript'],
+
+  javascript: ['java'],
+
+  react: ['reactive'],
+
+  sql: ['nosql'],
+
+  c: ['c#', 'c++'],
+};
+
 export const SEMANTIC_KNOWLEDGE: Record<
   string,
   SemanticKnowledgeEntry
@@ -172,6 +191,44 @@ export const SEMANTIC_KNOWLEDGE: Record<
   },
 
   // ====================================================
+  // SPRING
+  // ====================================================
+
+  spring: {
+    synonyms: [
+      'spring boot',
+      'java',
+      'jpa',
+    ],
+
+    concepts: [
+      'backend',
+      'api',
+    ],
+
+    relatedTerms: [
+      'microsservicos',
+      'java backend',
+    ],
+
+    boostTerms: [
+      'spring',
+      'java',
+    ],
+
+    intents: [
+      'buscar_curso',
+      'buscar_aula',
+    ],
+
+    exclusions: ['javascript'],
+
+    category: 'backend',
+
+    searchPriority: 10,
+  },
+
+  // ====================================================
   // JAVASCRIPT
   // ====================================================
 
@@ -215,6 +272,81 @@ export const SEMANTIC_KNOWLEDGE: Record<
     ],
 
     category: 'frontend',
+
+    searchPriority: 10,
+  },
+
+  // ====================================================
+  // REACT
+  // ====================================================
+
+  react: {
+    synonyms: [
+      'reactjs',
+      'jsx',
+      'frontend',
+    ],
+
+    concepts: [
+      'spa',
+      'componentizacao',
+    ],
+
+    relatedTerms: [
+      'componentes',
+      'hooks',
+      'frontend',
+    ],
+
+    boostTerms: [
+      'react',
+      'reactjs',
+    ],
+
+    intents: [
+      'buscar_curso',
+      'buscar_aula',
+    ],
+
+    exclusions: ['reactive'],
+
+    category: 'frontend',
+
+    searchPriority: 10,
+  },
+
+  // ====================================================
+  // NODE
+  // ====================================================
+
+  node: {
+    synonyms: [
+      'nodejs',
+      'express',
+      'nestjs',
+    ],
+
+    concepts: [
+      'backend',
+      'api',
+    ],
+
+    relatedTerms: [
+      'javascript backend',
+      'servidor',
+    ],
+
+    boostTerms: [
+      'node',
+      'nestjs',
+    ],
+
+    intents: [
+      'buscar_curso',
+      'buscar_aula',
+    ],
+
+    category: 'backend',
 
     searchPriority: 10,
   },

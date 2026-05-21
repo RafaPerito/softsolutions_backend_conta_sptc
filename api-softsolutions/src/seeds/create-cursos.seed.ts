@@ -1,4 +1,5 @@
 import { CursoEntity } from '../infrastructure/database/entities/curso.entity';
+
 import { seedDataSource } from './seed-data-source';
 
 export async function runSeedCursos() {
@@ -322,6 +323,85 @@ export async function runSeedCursos() {
 
       imagemCurso:
         'https://raw.githubusercontent.com/SoftSolutionsProject/img/refs/heads/main/cards/12.png',
+    },
+
+    // ====================================================
+    // NOVOS CURSOS SEMÂNTICOS
+    // ====================================================
+
+    {
+      nomeCurso:
+        'Spring Boot e APIs REST',
+
+      tempoCurso: 55,
+
+      descricaoCurta:
+        'Aprenda APIs REST com Spring Boot.',
+
+      descricaoDetalhada:
+        'Construa APIs robustas e escaláveis utilizando Java e Spring Boot.',
+
+      professor:
+        'Ricardo Martins',
+
+      categoria: 'Backend',
+
+      status: 'ativo',
+
+      avaliacao: 4.9,
+
+      imagemCurso:
+        'https://raw.githubusercontent.com/SoftSolutionsProject/img/refs/heads/main/cards/13.png',
+    },
+
+    {
+      nomeCurso:
+        'React Moderno com TypeScript',
+
+      tempoCurso: 50,
+
+      descricaoCurta:
+        'Desenvolvimento frontend moderno com React.',
+
+      descricaoDetalhada:
+        'Aprenda componentes, hooks e arquitetura frontend moderna.',
+
+      professor:
+        'Fernanda Alves',
+
+      categoria: 'Frontend',
+
+      status: 'ativo',
+
+      avaliacao: 4.8,
+
+      imagemCurso:
+        'https://raw.githubusercontent.com/SoftSolutionsProject/img/refs/heads/main/cards/14.png',
+    },
+
+    {
+      nomeCurso:
+        'Node.js e NestJS para Backend',
+
+      tempoCurso: 60,
+
+      descricaoCurta:
+        'Crie APIs modernas com Node.js.',
+
+      descricaoDetalhada:
+        'Aprenda arquitetura backend utilizando NestJS e TypeScript.',
+
+      professor:
+        'André Costa',
+
+      categoria: 'Backend',
+
+      status: 'ativo',
+
+      avaliacao: 4.9,
+
+      imagemCurso:
+        'https://raw.githubusercontent.com/SoftSolutionsProject/img/refs/heads/main/cards/15.png',
     },
   ]);
 

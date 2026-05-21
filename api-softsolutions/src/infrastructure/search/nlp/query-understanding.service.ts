@@ -5,6 +5,7 @@ import {
 
 import {
   SEMANTIC_KNOWLEDGE,
+  AMBIGUOUS_TERMS,
 } from './semantic-knowledge.dictionary';
 
 import { IntentClassifierService } from './intent-classifier.service';
@@ -78,6 +79,31 @@ export class QueryUnderstandingService {
       .replace(/[^\w\s]/g, ' ')
       .replace(/\s+/g, ' ')
       .trim();
+  }
+
+  private removeAmbiguousTerms(
+    tokens: string[],
+  ): string[] {
+    const exclusions =
+      new Set<string>();
+
+    for (const token of tokens) {
+      const ambiguous =
+        AMBIGUOUS_TERMS[token];
+
+      if (!ambiguous) {
+        continue;
+      }
+
+      ambiguous.forEach((a) =>
+        exclusions.add(a),
+      );
+    }
+
+    return tokens.filter(
+      (token) =>
+        !exclusions.has(token),
+    );
   }
 
   private extractSemanticContext(
@@ -195,9 +221,14 @@ export class QueryUnderstandingService {
       .split(/\s+/)
       .filter(Boolean);
 
+    const cleanedTokens =
+      this.removeAmbiguousTerms(
+        tokens,
+      );
+
     const semanticContext =
       this.extractSemanticContext(
-        tokens,
+        cleanedTokens,
       );
 
     const expandedQuery = [
@@ -252,7 +283,7 @@ export class QueryUnderstandingService {
 
       embedding,
 
-      tokens,
+      tokens: cleanedTokens,
 
       filteredTokens:
         classification.filteredTokens,
@@ -264,7 +295,7 @@ export class QueryUnderstandingService {
         classification.rankings,
 
       matchedTerms: [
-        ...tokens,
+        ...cleanedTokens,
         ...semanticContext.synonyms,
         ...semanticContext.concepts,
       ],

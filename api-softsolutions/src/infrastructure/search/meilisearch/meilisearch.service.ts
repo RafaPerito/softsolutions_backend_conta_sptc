@@ -167,17 +167,17 @@ export class MeilisearchService {
     await this.client.waitForTask(
       (
         await index.updateRankingRules([
-          'words',
+          'exactness',
 
-          'typo',
+          'words',
 
           'proximity',
 
           'attribute',
 
-          'sort',
+          'typo',
 
-          'exactness',
+          'sort',
         ])
       ).taskUid,
     );
@@ -342,6 +342,58 @@ ${JSON.stringify(
 
     return (response.hits ??
       []) as SearchItem[];
+  }
+
+  // ====================================================
+  // AUTOCOMPLETE / SUGGESTIONS
+  // ====================================================
+
+  async getSuggestions(
+    query: string,
+  ): Promise<string[]> {
+    const index =
+      await this.getOrCreateIndex();
+
+    const response =
+      await index.search(query, {
+        limit: 8,
+
+        attributesToRetrieve: [
+          'titulo',
+
+          'curso',
+
+          'categoria',
+        ],
+      });
+
+    const suggestions =
+      new Set<string>();
+
+    for (const hit of response
+      .hits as any[]) {
+      if (hit.titulo) {
+        suggestions.add(
+          hit.titulo,
+        );
+      }
+
+      if (hit.curso) {
+        suggestions.add(
+          hit.curso,
+        );
+      }
+
+      if (hit.categoria) {
+        suggestions.add(
+          hit.categoria,
+        );
+      }
+    }
+
+    return [...suggestions]
+      .filter(Boolean)
+      .slice(0, 8);
   }
 
   // ====================================================

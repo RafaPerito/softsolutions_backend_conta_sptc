@@ -143,6 +143,26 @@ export class IntentClassifierService
       },
 
       {
+        text: 'curso de react',
+        intent: 'buscar_curso',
+      },
+
+      {
+        text: 'curso de node',
+        intent: 'buscar_curso',
+      },
+
+      {
+        text: 'curso de spring boot',
+        intent: 'buscar_curso',
+      },
+
+      {
+        text: 'curso de nestjs',
+        intent: 'buscar_curso',
+      },
+
+      {
         text: 'quero estudar backend',
         intent: 'buscar_curso',
       },
@@ -187,8 +207,95 @@ export class IntentClassifierService
       },
 
       {
+        text: 'aula de java',
+        intent: 'buscar_aula',
+      },
+
+      {
+        text: 'aula de react',
+        intent: 'buscar_aula',
+      },
+
+      {
         text: 'conteudo sobre backend',
         intent: 'buscar_aula',
+      },
+
+      // ====================================================
+      // TRILHAS
+      // ====================================================
+
+      {
+        text: 'trilha backend',
+        intent: 'buscar_trilha',
+      },
+
+      {
+        text: 'trilha frontend',
+        intent: 'buscar_trilha',
+      },
+
+      {
+        text: 'trilha de aprendizado',
+        intent: 'buscar_trilha',
+      },
+
+      {
+        text: 'trilha java backend',
+        intent: 'buscar_trilha',
+      },
+
+      // ====================================================
+      // CATEGORIAS
+      // ====================================================
+
+      {
+        text: 'cursos de backend',
+        intent: 'buscar_categoria',
+      },
+
+      {
+        text: 'cursos frontend',
+        intent: 'buscar_categoria',
+      },
+
+      {
+        text: 'cursos de banco de dados',
+        intent: 'buscar_categoria',
+      },
+
+      {
+        text: 'cursos de devops',
+        intent: 'buscar_categoria',
+      },
+
+      // ====================================================
+      // CONTEÚDO
+      // ====================================================
+
+      {
+        text: 'o que e spring boot',
+        intent: 'buscar_conteudo',
+      },
+
+      {
+        text: 'explicacao sobre docker',
+        intent: 'buscar_conteudo',
+      },
+
+      {
+        text: 'conteudo sobre java',
+        intent: 'buscar_conteudo',
+      },
+
+      {
+        text: 'o que e react',
+        intent: 'buscar_conteudo',
+      },
+
+      {
+        text: 'como funciona nodejs',
+        intent: 'buscar_conteudo',
       },
 
       // ====================================================
