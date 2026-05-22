@@ -69,6 +69,10 @@ export class QueryUnderstandingService {
     );
   }
 
+  // ====================================================
+  // NORMALIZATION
+  // ====================================================
+
   private normalize(
     text: string,
   ): string {
@@ -80,6 +84,23 @@ export class QueryUnderstandingService {
       .replace(/\s+/g, ' ')
       .trim();
   }
+
+  // ====================================================
+  // TOKENIZE
+  // ====================================================
+
+  private tokenize(
+    text: string,
+  ): string[] {
+    return text
+      .split(/\s+/)
+      .map((t) => t.trim())
+      .filter(Boolean);
+  }
+
+  // ====================================================
+  // REMOVE AMBIGUOUS TERMS
+  // ====================================================
 
   private removeAmbiguousTerms(
     tokens: string[],
@@ -96,15 +117,23 @@ export class QueryUnderstandingService {
       }
 
       ambiguous.forEach((a) =>
-        exclusions.add(a),
+        exclusions.add(
+          this.normalize(a),
+        ),
       );
     }
 
     return tokens.filter(
       (token) =>
-        !exclusions.has(token),
+        !exclusions.has(
+          this.normalize(token),
+        ),
     );
   }
+
+  // ====================================================
+  // SEMANTIC CONTEXT
+  // ====================================================
 
   private extractSemanticContext(
     tokens: string[],
@@ -129,32 +158,53 @@ export class QueryUnderstandingService {
 
     for (const token of tokens) {
       const knowledge =
-        SEMANTIC_KNOWLEDGE[token];
+        SEMANTIC_KNOWLEDGE[
+          token
+        ];
 
-      if (!knowledge) continue;
+      if (!knowledge) {
+        continue;
+      }
 
       knowledge.synonyms.forEach(
-        (s) => synonyms.add(s),
+        (s) =>
+          synonyms.add(
+            this.normalize(s),
+          ),
       );
 
       knowledge.concepts.forEach(
-        (c) => concepts.add(c),
+        (c) =>
+          concepts.add(
+            this.normalize(c),
+          ),
       );
 
       knowledge.relatedTerms.forEach(
-        (r) => relatedTerms.add(r),
+        (r) =>
+          relatedTerms.add(
+            this.normalize(r),
+          ),
       );
 
       knowledge.boostTerms.forEach(
-        (b) => boostTerms.add(b),
+        (b) =>
+          boostTerms.add(
+            this.normalize(b),
+          ),
       );
 
       knowledge.exclusions?.forEach(
-        (e) => exclusions.add(e),
+        (e) =>
+          exclusions.add(
+            this.normalize(e),
+          ),
       );
 
       categories.add(
-        knowledge.category,
+        this.normalize(
+          knowledge.category,
+        ),
       );
     }
 
@@ -174,6 +224,36 @@ export class QueryUnderstandingService {
       categories: [...categories],
     };
   }
+
+  // ====================================================
+  // QUERY EXPANSION
+  // ====================================================
+
+  private buildExpandedQuery(
+    normalizedText: string,
+    semanticContext: any,
+  ): string {
+    return [
+      normalizedText,
+
+      ...semanticContext.synonyms,
+
+      ...semanticContext.concepts,
+
+      ...semanticContext.relatedTerms,
+
+      ...semanticContext.boostTerms,
+
+      ...semanticContext.categories,
+    ]
+      .filter(Boolean)
+      .join(' ')
+      .trim();
+  }
+
+  // ====================================================
+  // EMBEDDINGS
+  // ====================================================
 
   private async initTransformers() {
     if (
@@ -195,51 +275,77 @@ export class QueryUnderstandingService {
 
       this.transformerInitialized =
         true;
+
+      this.logger.log(
+        '✅ Transformers inicializado',
+      );
     } catch (error) {
       this.logger.error(
-        'Erro Transformers',
+        '❌ Erro ao inicializar transformers',
       );
 
       console.error(error);
     }
   }
 
+  // ====================================================
+  // PROCESS
+  // ====================================================
+
   async process(
     originalText: string,
   ): Promise<ProcessedQuery> {
-    const text = originalText ?? '';
+    const text =
+      originalText ?? '';
 
     const normalizedText =
       this.normalize(text);
+
+    // ====================================================
+    // NLP CLASSIFICATION
+    // ====================================================
 
     const classification =
       this.intentClassifier.classify(
         normalizedText,
       );
 
-    const tokens = normalizedText
-      .split(/\s+/)
-      .filter(Boolean);
+    // ====================================================
+    // TOKENS
+    // ====================================================
+
+    const rawTokens =
+      this.tokenize(
+        normalizedText,
+      );
 
     const cleanedTokens =
       this.removeAmbiguousTerms(
-        tokens,
+        rawTokens,
       );
+
+    // ====================================================
+    // SEMANTIC CONTEXT
+    // ====================================================
 
     const semanticContext =
       this.extractSemanticContext(
         cleanedTokens,
       );
 
-    const expandedQuery = [
-      normalizedText,
-      ...semanticContext.synonyms,
-      ...semanticContext.concepts,
-      ...semanticContext.relatedTerms,
-      ...semanticContext.boostTerms,
-    ]
-      .join(' ')
-      .trim();
+    // ====================================================
+    // EXPANDED QUERY
+    // ====================================================
+
+    const expandedQuery =
+      this.buildExpandedQuery(
+        normalizedText,
+        semanticContext,
+      );
+
+    // ====================================================
+    // EMBEDDING
+    // ====================================================
 
     await this.initTransformers();
 
@@ -248,27 +354,110 @@ export class QueryUnderstandingService {
       | undefined;
 
     try {
-      const tensor =
-        await this.embeddingPipeline(
-          expandedQuery,
-          {
-            pooling: 'mean',
-            normalize: true,
-          },
-        );
+      if (
+        this.embeddingPipeline
+      ) {
+        const tensor =
+          await this.embeddingPipeline(
+            expandedQuery,
+            {
+              pooling: 'mean',
+              normalize: true,
+            },
+          );
 
-      if (tensor?.data) {
-        embedding = Array.from(
-          tensor.data,
-        );
+        if (tensor?.data) {
+          embedding = Array.from(
+            tensor.data,
+          );
+        }
       }
     } catch (error) {
       this.logger.error(
-        'Erro embedding',
+        '❌ Erro embedding',
       );
 
       console.error(error);
     }
+
+    // ====================================================
+    // MATCHED TERMS
+    // ====================================================
+
+    const matchedTerms = [
+      ...cleanedTokens,
+
+      ...semanticContext.synonyms,
+
+      ...semanticContext.concepts,
+
+      ...semanticContext.relatedTerms,
+
+      ...semanticContext.boostTerms,
+    ];
+
+    // ====================================================
+    // DEBUG
+    // ====================================================
+
+    this.logger.log(`
+================ QUERY UNDERSTANDING ================
+
+ORIGINAL:
+${originalText}
+
+NORMALIZED:
+${normalizedText}
+
+INTENT:
+${classification.intent}
+
+CONFIDENCE:
+${classification.confidence}
+
+TOKENS:
+${JSON.stringify(
+      rawTokens,
+    )}
+
+CLEANED TOKENS:
+${JSON.stringify(
+      cleanedTokens,
+    )}
+
+FILTERED TOKENS:
+${JSON.stringify(
+      classification.filteredTokens,
+    )}
+
+SYNONYMS:
+${JSON.stringify(
+      semanticContext.synonyms,
+    )}
+
+CONCEPTS:
+${JSON.stringify(
+      semanticContext.concepts,
+    )}
+
+RELATED TERMS:
+${JSON.stringify(
+      semanticContext.relatedTerms,
+    )}
+
+BOOST TERMS:
+${JSON.stringify(
+      semanticContext.boostTerms,
+    )}
+
+CATEGORIES:
+${JSON.stringify(
+      semanticContext.categories,
+    )}
+
+EXPANDED QUERY:
+${expandedQuery}
+`);
 
     return {
       originalText: text,
@@ -294,11 +483,7 @@ export class QueryUnderstandingService {
       rankings:
         classification.rankings,
 
-      matchedTerms: [
-        ...cleanedTokens,
-        ...semanticContext.synonyms,
-        ...semanticContext.concepts,
-      ],
+      matchedTerms,
 
       synonyms:
         semanticContext.synonyms,

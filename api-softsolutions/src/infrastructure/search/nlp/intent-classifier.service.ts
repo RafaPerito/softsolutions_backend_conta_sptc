@@ -26,7 +26,85 @@ export class IntentClassifierService
     'desconhecida';
 
   private readonly confidenceThreshold =
-    0.25;
+    0.12;
+
+  // ====================================================
+  // HEURISTIC MAP
+  // ====================================================
+
+  private readonly heuristicIntents: Record<
+    string,
+    string[]
+  > = {
+    buscar_curso: [
+      'curso',
+      'cursos',
+      'aprender',
+      'estudar',
+      'treinamento',
+      'formacao',
+      'backend',
+      'frontend',
+      'java',
+      'python',
+      'react',
+      'node',
+      'nestjs',
+      'spring',
+      'docker',
+      'sql',
+      'programacao',
+      'api',
+      'microsservicos',
+    ],
+
+    buscar_aula: [
+      'aula',
+      'aulas',
+      'video',
+      'conteudo',
+      'modulo',
+      'explicacao',
+    ],
+
+    buscar_trilha: [
+      'trilha',
+      'carreira',
+      'roadmap',
+      'especializacao',
+    ],
+
+    buscar_conteudo: [
+      'o que e',
+      'como funciona',
+      'explica',
+      'conceito',
+      'definicao',
+    ],
+
+    buscar_ia: [
+      'ia',
+      'ai',
+      'machine learning',
+      'deep learning',
+      'chatgpt',
+      'inteligencia artificial',
+      'llm',
+    ],
+
+    login: [
+      'login',
+      'senha',
+      'acesso',
+      'entrar',
+    ],
+
+    certificado: [
+      'certificado',
+      'emitir',
+      'baixar certificado',
+    ],
+  };
 
   constructor() {
     this.train();
@@ -54,6 +132,10 @@ export class IntentClassifierService
       .join(' ')
       .trim();
 
+    // ====================================================
+    // EMPTY
+    // ====================================================
+
     if (!processedText) {
       return {
         originalText,
@@ -67,6 +149,19 @@ export class IntentClassifierService
       };
     }
 
+    // ====================================================
+    // HEURISTIC FIRST
+    // ====================================================
+
+    const heuristicResult =
+      this.detectHeuristicIntent(
+        normalizedText,
+      );
+
+    // ====================================================
+    // BAYES
+    // ====================================================
+
     const classifications =
       this.classifier.getClassifications(
         processedText,
@@ -74,21 +169,77 @@ export class IntentClassifierService
 
     const best = classifications[0];
 
-    const bestIntent =
+    // ====================================================
+    // FINAL DECISION
+    // ====================================================
+
+    let finalIntent =
+      this.fallbackIntent;
+
+    let finalConfidence = 0;
+
+    // ============================================
+    // PRIORIDADE:
+    // HEURISTIC
+    // ============================================
+
+    if (
+      heuristicResult.confidence >=
+      0.6
+    ) {
+      finalIntent =
+        heuristicResult.intent;
+
+      finalConfidence =
+        heuristicResult.confidence;
+    }
+
+    // ============================================
+    // BAYES FALLBACK
+    // ============================================
+
+    else if (
       best &&
       best.value >=
         this.confidenceThreshold
-        ? best.label
-        : this.fallbackIntent;
+    ) {
+      finalIntent = best.label;
+
+      finalConfidence = best.value;
+    }
+
+    // ============================================
+    // MIXED DECISION
+    // ============================================
+
+    else if (
+      heuristicResult.confidence >
+      0
+    ) {
+      finalIntent =
+        heuristicResult.intent;
+
+      finalConfidence =
+        heuristicResult.confidence;
+    }
 
     return {
       originalText,
+
       normalizedText,
+
       tokens,
+
       filteredTokens,
+
       stems,
-      intent: bestIntent,
-      confidence: best?.value ?? 0,
+
+      intent: finalIntent,
+
+      confidence: Number(
+        finalConfidence.toFixed(3),
+      ),
+
       rankings: classifications.map(
         (item) => ({
           label: item.label,
@@ -98,276 +249,184 @@ export class IntentClassifierService
     };
   }
 
+  // ====================================================
+  // HEURISTIC INTENT DETECTION
+  // ====================================================
+
+  private detectHeuristicIntent(
+    text: string,
+  ): {
+    intent: string;
+    confidence: number;
+  } {
+    let bestIntent =
+      this.fallbackIntent;
+
+    let bestScore = 0;
+
+    for (const [
+      intent,
+      keywords,
+    ] of Object.entries(
+      this.heuristicIntents,
+    )) {
+      let score = 0;
+
+      for (const keyword of keywords) {
+        if (
+          text.includes(
+            keyword.toLowerCase(),
+          )
+        ) {
+          score += 1;
+        }
+      }
+
+      if (score > bestScore) {
+        bestScore = score;
+        bestIntent = intent;
+      }
+    }
+
+    // ============================================
+    // CONFIDENCE CALCULATION
+    // ============================================
+
+    const confidence =
+      Math.min(
+        0.95,
+        bestScore * 0.25,
+      );
+
+    return {
+      intent: bestIntent,
+      confidence,
+    };
+  }
+
+  // ====================================================
+  // TRAIN
+  // ====================================================
+
   private train(): void {
     const samples: Array<{
       text: string;
       intent: string;
     }> = [
-      // ====================================================
       // CURSOS
-      // ====================================================
 
       {
-        text: 'curso de python',
+        text:
+          'quero aprender backend com java',
         intent: 'buscar_curso',
       },
 
       {
-        text: 'curso de java',
+        text:
+          'curso de java',
         intent: 'buscar_curso',
       },
 
       {
-        text: 'curso de javascript',
+        text:
+          'curso backend',
         intent: 'buscar_curso',
       },
 
       {
-        text: 'curso de frontend',
+        text:
+          'curso de react',
         intent: 'buscar_curso',
       },
 
       {
-        text: 'curso backend',
+        text:
+          'curso de spring boot',
         intent: 'buscar_curso',
       },
 
       {
-        text: 'curso de docker',
+        text:
+          'curso de python',
         intent: 'buscar_curso',
       },
 
       {
-        text: 'curso de sql',
+        text:
+          'curso de nodejs',
         intent: 'buscar_curso',
       },
 
       {
-        text: 'curso de react',
+        text:
+          'quero estudar tecnologia',
         intent: 'buscar_curso',
       },
 
-      {
-        text: 'curso de node',
-        intent: 'buscar_curso',
-      },
-
-      {
-        text: 'curso de spring boot',
-        intent: 'buscar_curso',
-      },
-
-      {
-        text: 'curso de nestjs',
-        intent: 'buscar_curso',
-      },
-
-      {
-        text: 'quero estudar backend',
-        intent: 'buscar_curso',
-      },
-
-      {
-        text: 'quero aprender frontend',
-        intent: 'buscar_curso',
-      },
-
-      {
-        text: 'quero aprender programacao',
-        intent: 'buscar_curso',
-      },
-
-      {
-        text: 'quero estudar tecnologia',
-        intent: 'buscar_curso',
-      },
-
-      // ====================================================
       // AULAS
-      // ====================================================
 
       {
-        text: 'buscar aulas',
+        text:
+          'aulas de java',
         intent: 'buscar_aula',
       },
 
       {
-        text: 'aulas de docker',
+        text:
+          'video aula de sql',
         intent: 'buscar_aula',
       },
 
-      {
-        text: 'video aula de sql',
-        intent: 'buscar_aula',
-      },
-
-      {
-        text: 'aula de python',
-        intent: 'buscar_aula',
-      },
-
-      {
-        text: 'aula de java',
-        intent: 'buscar_aula',
-      },
-
-      {
-        text: 'aula de react',
-        intent: 'buscar_aula',
-      },
-
-      {
-        text: 'conteudo sobre backend',
-        intent: 'buscar_aula',
-      },
-
-      // ====================================================
       // TRILHAS
-      // ====================================================
 
       {
-        text: 'trilha backend',
+        text:
+          'trilha backend',
         intent: 'buscar_trilha',
       },
 
-      {
-        text: 'trilha frontend',
-        intent: 'buscar_trilha',
-      },
-
-      {
-        text: 'trilha de aprendizado',
-        intent: 'buscar_trilha',
-      },
-
-      {
-        text: 'trilha java backend',
-        intent: 'buscar_trilha',
-      },
-
-      // ====================================================
-      // CATEGORIAS
-      // ====================================================
-
-      {
-        text: 'cursos de backend',
-        intent: 'buscar_categoria',
-      },
-
-      {
-        text: 'cursos frontend',
-        intent: 'buscar_categoria',
-      },
-
-      {
-        text: 'cursos de banco de dados',
-        intent: 'buscar_categoria',
-      },
-
-      {
-        text: 'cursos de devops',
-        intent: 'buscar_categoria',
-      },
-
-      // ====================================================
       // CONTEÚDO
-      // ====================================================
 
       {
-        text: 'o que e spring boot',
+        text:
+          'o que e spring boot',
         intent: 'buscar_conteudo',
       },
 
       {
-        text: 'explicacao sobre docker',
+        text:
+          'como funciona docker',
         intent: 'buscar_conteudo',
       },
 
-      {
-        text: 'conteudo sobre java',
-        intent: 'buscar_conteudo',
-      },
-
-      {
-        text: 'o que e react',
-        intent: 'buscar_conteudo',
-      },
-
-      {
-        text: 'como funciona nodejs',
-        intent: 'buscar_conteudo',
-      },
-
-      // ====================================================
-      // CERTIFICADO
-      // ====================================================
-
-      {
-        text: 'meu certificado',
-        intent: 'certificado',
-      },
-
-      {
-        text: 'emitir certificado',
-        intent: 'certificado',
-      },
-
-      {
-        text: 'baixar certificado',
-        intent: 'certificado',
-      },
-
-      // ====================================================
-      // LOGIN
-      // ====================================================
-
-      {
-        text: 'nao consigo entrar',
-        intent: 'login',
-      },
-
-      {
-        text: 'erro no login',
-        intent: 'login',
-      },
-
-      {
-        text: 'senha invalida',
-        intent: 'login',
-      },
-
-      {
-        text: 'nao consigo acessar',
-        intent: 'login',
-      },
-
-      // ====================================================
       // IA
-      // ====================================================
 
       {
-        text: 'curso de inteligencia artificial',
+        text:
+          'machine learning',
         intent: 'buscar_ia',
       },
 
       {
-        text: 'machine learning',
+        text:
+          'curso de inteligencia artificial',
         intent: 'buscar_ia',
       },
 
-      {
-        text: 'deep learning',
-        intent: 'buscar_ia',
-      },
+      // LOGIN
 
       {
-        text: 'chatgpt',
-        intent: 'buscar_ia',
+        text:
+          'erro no login',
+        intent: 'login',
       },
 
+      // CERTIFICADO
+
       {
-        text: 'curso de ia',
-        intent: 'buscar_ia',
+        text:
+          'emitir certificado',
+        intent: 'certificado',
       },
     ];
 
@@ -385,6 +444,10 @@ export class IntentClassifierService
 
     this.classifier.train();
   }
+
+  // ====================================================
+  // PREPROCESS
+  // ====================================================
 
   private preprocess(
     text: string,
@@ -421,7 +484,8 @@ export class IntentClassifierService
     text: string,
   ): string[] {
     return (
-      this.tokenizer.tokenize(text) ?? []
+      this.tokenizer.tokenize(text) ??
+      []
     ).filter(Boolean);
   }
 
@@ -466,7 +530,9 @@ export class IntentClassifierService
     );
   }
 
-  private stem(token: string): string {
+  private stem(
+    token: string,
+  ): string {
     return natural.PorterStemmerPt.stem(
       token,
     );

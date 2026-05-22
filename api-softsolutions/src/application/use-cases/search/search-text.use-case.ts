@@ -27,9 +27,24 @@ export class SearchTextUseCase {
       'procure',
       'buscar',
       'busque',
+      'pesquisar',
+      'pesquise',
       'me',
-      'existe',
+      'pra',
+      'pro',
       'tem',
+      'existe',
+      'sobre',
+      'como',
+      'funciona',
+      'aprender',
+      'estudar',
+      'curso',
+      'cursos',
+      'aula',
+      'aulas',
+      'video',
+      'vídeo',
       'voces',
       'voce',
       'de',
@@ -55,6 +70,8 @@ export class SearchTextUseCase {
       'exercícios',
       'modulo',
       'módulo',
+      'conteudo',
+      'conteúdo',
     ];
 
   constructor(
@@ -85,6 +102,20 @@ export class SearchTextUseCase {
     return regex.test(text);
   }
 
+  // ====================================================
+  // NORMALIZE
+  // ====================================================
+
+  private normalize(
+    value: string,
+  ): string {
+    return value
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim();
+  }
+
   async execute(
     query: string,
   ): Promise<SearchItem[]> {
@@ -102,7 +133,7 @@ export class SearchTextUseCase {
       );
 
     // ====================================================
-    // QUERY CLEANUP
+    // CLEAN TOKENS
     // ====================================================
 
     const cleanedTokens =
@@ -111,7 +142,7 @@ export class SearchTextUseCase {
       ).filter(
         (token) =>
           !this.conversationalStopwords.includes(
-            token,
+            token.toLowerCase(),
           ),
       );
 
@@ -129,12 +160,18 @@ export class SearchTextUseCase {
       ...(processed.relatedTerms ?? []),
 
       ...(processed.boostTerms ?? []),
+
+      ...(processed.categories ?? []),
     ];
 
     const expandedQuery =
       [
         ...new Set(
-          expandedTerms.filter(Boolean),
+          expandedTerms
+            .filter(Boolean)
+            .map((t) =>
+              t.toLowerCase(),
+            ),
         ),
       ].join(' ');
 
@@ -153,9 +190,17 @@ ${expandedQuery}
 Intent:
 ${processed.intent}
 
+Confidence:
+${processed.confidence}
+
 Categories:
 ${JSON.stringify(
       processed.categories,
+    )}
+
+Tokens:
+${JSON.stringify(
+      cleanedTokens,
     )}
 `);
 
@@ -170,19 +215,12 @@ ${JSON.stringify(
     // EXPANDED QUERY
     // ====================================================
 
-    this.logger.log(`
-================ SEARCH STRATEGY 1 ================
-
-${expandedQuery}
-`);
-
     if (
       this.meiliService.supportsVectorSearch()
     ) {
       hits =
         await this.meiliService.searchHybrid(
           expandedQuery,
-
           processed.embedding,
         );
     } else {
@@ -199,7 +237,7 @@ ${expandedQuery}
 
     if (!hits.length) {
       this.logger.warn(
-        '⚠️ Expanded query sem resultados. Tentando normalized query...',
+        '⚠️ Sem resultados na expanded query.',
       );
 
       hits =
@@ -220,12 +258,6 @@ ${expandedQuery}
       const tokenQuery =
         cleanedTokens.join(' ');
 
-      this.logger.warn(`
-⚠️ Tentando cleaned tokens:
-
-${tokenQuery}
-`);
-
       hits =
         await this.meiliService.search(
           tokenQuery,
@@ -242,12 +274,6 @@ ${tokenQuery}
       cleanedTokens.length
     ) {
       for (const token of cleanedTokens) {
-        this.logger.warn(`
-⚠️ Tentando token individual:
-
-${token}
-`);
-
         hits =
           await this.meiliService.search(
             token,
@@ -290,38 +316,52 @@ ${token}
       .map((item: any) => {
         let score = 0;
 
-        const titulo = (
-          item.titulo || ''
-        )
-          .toLowerCase()
-          .trim();
+        const titulo =
+          this.normalize(
+            item.titulo || '',
+          );
 
-        const descricao = (
-          item.descricao ||
-          item.conteudo ||
-          ''
-        ).toLowerCase();
+        const descricao =
+          this.normalize(
+            item.descricao ||
+              item.conteudo ||
+              '',
+          );
 
-        const curso = (
-          item.curso || ''
-        ).toLowerCase();
+        const curso =
+          this.normalize(
+            item.curso || '',
+          );
 
-        const modulo = (
-          item.modulo || ''
-        ).toLowerCase();
+        const modulo =
+          this.normalize(
+            item.modulo || '',
+          );
 
-        const categoria = (
-          item.categoria || ''
-        ).toLowerCase();
+        const categoria =
+          this.normalize(
+            item.categoria || '',
+          );
 
-        const semanticTags =
-          item.semanticTags ?? [];
+        const semanticTags = (
+          item.semanticTags ?? []
+        ).map((t: string) =>
+          this.normalize(t),
+        );
 
-        const semanticConcepts =
-          item.semanticConcepts ?? [];
+        const semanticConcepts = (
+          item.semanticConcepts ??
+          []
+        ).map((t: string) =>
+          this.normalize(t),
+        );
 
-        const semanticCategories =
-          item.semanticCategories ?? [];
+        const semanticCategories = (
+          item.semanticCategories ??
+          []
+        ).map((t: string) =>
+          this.normalize(t),
+        );
 
         const searchableText = `
 ${titulo}
@@ -341,103 +381,78 @@ ${semanticCategories.join(' ')}
         // ====================================================
 
         if (item.tipo === 'curso') {
-          score += 50000;
+          score += 70000;
         }
 
         if (item.tipo === 'aula') {
-          score += 5000;
+          score += 10000;
         }
 
         // ====================================================
-        // EXACT TOKEN MATCH
+        // EXACT MATCH
         // ====================================================
 
         for (const token of cleanedTokens) {
-          // ============================================
-          // EXACT TITLE
-          // ============================================
+          const normalizedToken =
+            this.normalize(token);
 
           if (
-            titulo === token
+            titulo === normalizedToken
           ) {
-            score += 90000;
+            score += 100000;
           }
-
-          // ============================================
-          // TITLE STARTS WITH TOKEN
-          // ============================================
 
           if (
             titulo.startsWith(
-              token,
+              normalizedToken,
             )
           ) {
-            score += 60000;
+            score += 80000;
           }
-
-          // ============================================
-          // EXACT TITLE WORD MATCH
-          // ============================================
 
           if (
             this.exactWordMatch(
               titulo,
-              token,
+              normalizedToken,
             )
           ) {
-            score += 75000;
+            score += 85000;
           }
-
-          // ============================================
-          // SEARCHABLE TEXT
-          // ============================================
 
           if (
             this.exactWordMatch(
               searchableText,
-              token,
+              normalizedToken,
             )
           ) {
             score += 50000;
           }
 
-          // ============================================
-          // DESCRIPTION
-          // ============================================
-
           if (
             this.exactWordMatch(
               descricao,
-              token,
+              normalizedToken,
             )
           ) {
-            score += 22000;
+            score += 25000;
           }
-
-          // ============================================
-          // COURSE NAME
-          // ============================================
 
           if (
             this.exactWordMatch(
               curso,
-              token,
+              normalizedToken,
             )
           ) {
-            score += 65000;
+            score += 70000;
           }
-
-          // ============================================
-          // CATEGORY
-          // ============================================
 
           if (
             this.exactWordMatch(
               categoria,
-              token,
+              normalizedToken,
             )
           ) {
-            score += 32000;
+            score += 35000;
           }
         }
 
@@ -446,21 +461,26 @@ ${semanticCategories.join(' ')}
         // ====================================================
 
         for (const synonym of synonyms) {
+          const normalized =
+            this.normalize(
+              synonym,
+            );
+
           if (
             this.exactWordMatch(
               searchableText,
-              synonym.toLowerCase(),
+              normalized,
             )
           ) {
-            score += 18000;
+            score += 22000;
           }
 
           if (
             semanticTags.includes(
-              synonym.toLowerCase(),
+              normalized,
             )
           ) {
-            score += 14000;
+            score += 16000;
           }
         }
 
@@ -469,9 +489,22 @@ ${semanticCategories.join(' ')}
         // ====================================================
 
         for (const concept of concepts) {
+          const normalized =
+            this.normalize(
+              concept,
+            );
+
           if (
             semanticConcepts.includes(
-              concept,
+              normalized,
+            )
+          ) {
+            score += 22000;
+          }
+
+          if (
+            searchableText.includes(
+              normalized,
             )
           ) {
             score += 18000;
@@ -479,17 +512,22 @@ ${semanticCategories.join(' ')}
         }
 
         // ====================================================
-        // RELATED TERMS BOOST
+        // RELATED TERMS
         // ====================================================
 
         for (const related of relatedTerms) {
+          const normalized =
+            this.normalize(
+              related,
+            );
+
           if (
             this.exactWordMatch(
               searchableText,
-              related.toLowerCase(),
+              normalized,
             )
           ) {
-            score += 10000;
+            score += 14000;
           }
         }
 
@@ -498,12 +536,25 @@ ${semanticCategories.join(' ')}
         // ====================================================
 
         for (const category of categories) {
+          const normalized =
+            this.normalize(
+              category,
+            );
+
           if (
             semanticCategories.includes(
-              category,
+              normalized,
             )
           ) {
-            score += 25000;
+            score += 35000;
+          }
+
+          if (
+            categoria.includes(
+              normalized,
+            )
+          ) {
+            score += 28000;
           }
         }
 
@@ -511,84 +562,107 @@ ${semanticCategories.join(' ')}
         // INTENT BOOST
         // ====================================================
 
-        if (
-          processed.intent ===
-          'buscar_curso'
+        switch (
+          processed.intent
         ) {
-          if (item.tipo === 'curso') {
-            score += 45000;
-          }
-        }
+          case 'buscar_curso':
+            if (
+              item.tipo === 'curso'
+            ) {
+              score += 60000;
+            }
+            break;
 
-        if (
-          processed.intent ===
-          'buscar_aula'
-        ) {
-          if (item.tipo === 'aula') {
-            score += 30000;
-          }
-        }
+          case 'buscar_aula':
+            if (
+              item.tipo === 'aula'
+            ) {
+              score += 45000;
+            }
+            break;
 
-        if (
-          processed.intent ===
-          'buscar_ia'
-        ) {
-          if (
-            semanticCategories.includes(
-              'ai',
-            )
-          ) {
-            score += 60000;
-          }
+          case 'buscar_trilha':
+            if (
+              item.tipo === 'curso'
+            ) {
+              score += 30000;
+            }
+            break;
+
+          case 'buscar_ia':
+            if (
+              semanticCategories.includes(
+                'ai',
+              )
+            ) {
+              score += 80000;
+            }
+            break;
         }
 
         // ====================================================
-        // GENERIC LESSON PENALTY
+        // AVALIAÇÃO
         // ====================================================
 
-        const normalizedTitle =
-          titulo.trim();
+        if (
+          item.avaliacao &&
+          item.avaliacao >= 4.5
+        ) {
+          score += 12000;
+        }
+
+        // ====================================================
+        // GENERIC PENALTY
+        // ====================================================
 
         const isGenericLesson =
           this.genericLessonTerms.includes(
-            normalizedTitle,
+            titulo,
           );
 
         if (
           isGenericLesson &&
           item.tipo === 'aula'
         ) {
-          score -= 12000;
+          score -= 18000;
         }
 
         // ====================================================
-        // EXCLUSION PENALTY
+        // EXCLUSIONS
         // ====================================================
 
         for (const exclusion of exclusions) {
+          const normalized =
+            this.normalize(
+              exclusion,
+            );
+
           if (
             searchableText.includes(
-              exclusion.toLowerCase(),
+              normalized,
             )
           ) {
-            score -= 150000;
+            score -= 180000;
           }
         }
 
         // ====================================================
-        // PARTIAL WORD PENALTY
+        // PARTIAL MATCH PENALTY
         // ====================================================
 
         for (const token of cleanedTokens) {
+          const normalized =
+            this.normalize(token);
+
           const tokenRegex =
             new RegExp(
-              `\\b${token}\\b`,
+              `\\b${normalized}\\b`,
               'i',
             );
 
           const partialRegex =
             new RegExp(
-              token,
+              normalized,
               'i',
             );
 
@@ -610,22 +684,6 @@ ${semanticCategories.join(' ')}
           }
         }
 
-        this.logger.debug(`
-================ RERANK DEBUG ================
-
-Título:
-${titulo}
-
-Tipo:
-${item.tipo}
-
-Categoria:
-${categoria}
-
-Score:
-${score}
-`);
-
         return {
           ...item,
 
@@ -642,6 +700,6 @@ ${score}
       `✅ Resultado reranqueado: ${reranked.length} itens`,
     );
 
-    return reranked;
+    return reranked.slice(0, 20);
   }
 }

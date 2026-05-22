@@ -53,6 +53,8 @@ export const SEMANTIC_KNOWLEDGE: Record<
       'python',
       'php',
       'node',
+      'nestjs',
+      'express',
     ],
 
     concepts: [
@@ -60,6 +62,7 @@ export const SEMANTIC_KNOWLEDGE: Record<
       'microsservicos',
       'banco de dados',
       'integracao',
+      'arquitetura server side',
     ],
 
     relatedTerms: [
@@ -69,6 +72,8 @@ export const SEMANTIC_KNOWLEDGE: Record<
       'fastapi',
       'nestjs',
       'express',
+      'api rest',
+      'jwt',
     ],
 
     boostTerms: [
@@ -77,11 +82,13 @@ export const SEMANTIC_KNOWLEDGE: Record<
       'java',
       'python',
       'php',
+      'nodejs',
     ],
 
     intents: [
       'buscar_curso',
       'buscar_aula',
+      'buscar_trilha',
     ],
 
     category: 'backend',
@@ -120,6 +127,7 @@ export const SEMANTIC_KNOWLEDGE: Record<
       'componentes',
       'layout',
       'web design',
+      'frontend web',
     ],
 
     boostTerms: [
@@ -133,6 +141,7 @@ export const SEMANTIC_KNOWLEDGE: Record<
     intents: [
       'buscar_curso',
       'buscar_aula',
+      'buscar_trilha',
     ],
 
     category: 'frontend',
@@ -153,6 +162,7 @@ export const SEMANTIC_KNOWLEDGE: Record<
       'jdk',
       'jvm',
       'maven',
+      'java backend',
     ],
 
     concepts: [
@@ -169,6 +179,7 @@ export const SEMANTIC_KNOWLEDGE: Record<
       'servidor',
       'web',
       'spring framework',
+      'java web',
     ],
 
     boostTerms: [
@@ -176,14 +187,18 @@ export const SEMANTIC_KNOWLEDGE: Record<
       'spring',
       'backend',
       'api',
+      'spring boot',
     ],
 
     intents: [
       'buscar_curso',
       'buscar_aula',
+      'buscar_trilha',
     ],
 
-    exclusions: ['javascript'],
+    exclusions: [
+      'javascript',
+    ],
 
     category: 'backend',
 
@@ -199,20 +214,24 @@ export const SEMANTIC_KNOWLEDGE: Record<
       'spring boot',
       'java',
       'jpa',
+      'hibernate',
     ],
 
     concepts: [
       'backend',
       'api',
+      'microsservicos',
     ],
 
     relatedTerms: [
-      'microsservicos',
       'java backend',
+      'spring framework',
+      'rest api',
     ],
 
     boostTerms: [
       'spring',
+      'spring boot',
       'java',
     ],
 
@@ -221,7 +240,9 @@ export const SEMANTIC_KNOWLEDGE: Record<
       'buscar_aula',
     ],
 
-    exclusions: ['javascript'],
+    exclusions: [
+      'javascript',
+    ],
 
     category: 'backend',
 
@@ -290,12 +311,14 @@ export const SEMANTIC_KNOWLEDGE: Record<
     concepts: [
       'spa',
       'componentizacao',
+      'frontend moderno',
     ],
 
     relatedTerms: [
       'componentes',
       'hooks',
       'frontend',
+      'estado',
     ],
 
     boostTerms: [
@@ -308,7 +331,9 @@ export const SEMANTIC_KNOWLEDGE: Record<
       'buscar_aula',
     ],
 
-    exclusions: ['reactive'],
+    exclusions: [
+      'reactive',
+    ],
 
     category: 'frontend',
 
@@ -329,16 +354,19 @@ export const SEMANTIC_KNOWLEDGE: Record<
     concepts: [
       'backend',
       'api',
+      'javascript backend',
     ],
 
     relatedTerms: [
-      'javascript backend',
       'servidor',
+      'backend javascript',
+      'rest api',
     ],
 
     boostTerms: [
       'node',
       'nestjs',
+      'nodejs',
     ],
 
     intents: [
@@ -399,7 +427,7 @@ export const SEMANTIC_KNOWLEDGE: Record<
   },
 
   // ====================================================
-  // SQL / DATABASE
+  // SQL
   // ====================================================
 
   sql: {
@@ -420,10 +448,9 @@ export const SEMANTIC_KNOWLEDGE: Record<
 
     relatedTerms: [
       'database',
-      'dados',
-      'sqlserver',
       'consultas',
       'modelagem',
+      'relacional',
     ],
 
     boostTerms: [
@@ -444,7 +471,7 @@ export const SEMANTIC_KNOWLEDGE: Record<
   },
 
   // ====================================================
-  // DOCKER / DEVOPS
+  // DOCKER
   // ====================================================
 
   docker: {
@@ -552,12 +579,14 @@ export const SEMANTIC_KNOWLEDGE: Record<
       'conteudo',
       'certificado',
       'modulo',
+      'trilha',
     ],
 
     boostTerms: [
       'curso',
       'aula',
       'conteudo',
+      'trilha',
     ],
 
     intents: [
@@ -567,5 +596,80 @@ export const SEMANTIC_KNOWLEDGE: Record<
     category: 'education',
 
     searchPriority: 8,
+  },
+
+  // ====================================================
+  // CERTIFICADO
+  // ====================================================
+
+  certificado: {
+    synonyms: [
+      'diploma',
+      'comprovante',
+      'certificacao',
+    ],
+
+    concepts: [
+      'emissao',
+      'conclusao',
+      'curso finalizado',
+    ],
+
+    relatedTerms: [
+      'baixar certificado',
+      'emitir certificado',
+      'pdf',
+    ],
+
+    boostTerms: [
+      'certificado',
+      'certificacao',
+    ],
+
+    intents: [
+      'certificado',
+    ],
+
+    category: 'support',
+
+    searchPriority: 10,
+  },
+
+  // ====================================================
+  // LOGIN
+  // ====================================================
+
+  login: {
+    synonyms: [
+      'acesso',
+      'senha',
+      'entrar',
+      'autenticacao',
+    ],
+
+    concepts: [
+      'usuario',
+      'credenciais',
+    ],
+
+    relatedTerms: [
+      'esqueci senha',
+      'erro login',
+      'nao consigo acessar',
+    ],
+
+    boostTerms: [
+      'login',
+      'senha',
+      'acesso',
+    ],
+
+    intents: [
+      'login',
+    ],
+
+    category: 'support',
+
+    searchPriority: 10,
   },
 };
