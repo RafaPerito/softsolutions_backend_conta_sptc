@@ -36,6 +36,40 @@ export class IntentClassifierService
     string,
     string[]
   > = {
+    saudacao: [
+      'oi',
+      'ola',
+      'olá',
+      'bom dia',
+      'boa tarde',
+      'boa noite',
+      'e ai',
+      'eae',
+    ],
+
+    agradecimento: [
+      'obrigado',
+      'obrigada',
+      'valeu',
+      'agradeco',
+      'agradeço',
+    ],
+
+    despedida: [
+      'tchau',
+      'ate mais',
+      'até mais',
+      'falou',
+      'fui',
+    ],
+
+    conversa: [
+      'tudo bem',
+      'como voce esta',
+      'como você está',
+      'como vai',
+    ],
+
     buscar_curso: [
       'curso',
       'cursos',
@@ -132,10 +166,6 @@ export class IntentClassifierService
       .join(' ')
       .trim();
 
-    // ====================================================
-    // EMPTY
-    // ====================================================
-
     if (!processedText) {
       return {
         originalText,
@@ -149,18 +179,10 @@ export class IntentClassifierService
       };
     }
 
-    // ====================================================
-    // HEURISTIC FIRST
-    // ====================================================
-
     const heuristicResult =
       this.detectHeuristicIntent(
         normalizedText,
       );
-
-    // ====================================================
-    // BAYES
-    // ====================================================
 
     const classifications =
       this.classifier.getClassifications(
@@ -169,19 +191,10 @@ export class IntentClassifierService
 
     const best = classifications[0];
 
-    // ====================================================
-    // FINAL DECISION
-    // ====================================================
-
     let finalIntent =
       this.fallbackIntent;
 
     let finalConfidence = 0;
-
-    // ============================================
-    // PRIORIDADE:
-    // HEURISTIC
-    // ============================================
 
     if (
       heuristicResult.confidence >=
@@ -192,13 +205,7 @@ export class IntentClassifierService
 
       finalConfidence =
         heuristicResult.confidence;
-    }
-
-    // ============================================
-    // BAYES FALLBACK
-    // ============================================
-
-    else if (
+    } else if (
       best &&
       best.value >=
         this.confidenceThreshold
@@ -206,13 +213,7 @@ export class IntentClassifierService
       finalIntent = best.label;
 
       finalConfidence = best.value;
-    }
-
-    // ============================================
-    // MIXED DECISION
-    // ============================================
-
-    else if (
+    } else if (
       heuristicResult.confidence >
       0
     ) {
@@ -288,10 +289,6 @@ export class IntentClassifierService
       }
     }
 
-    // ============================================
-    // CONFIDENCE CALCULATION
-    // ============================================
-
     const confidence =
       Math.min(
         0.95,
@@ -313,35 +310,40 @@ export class IntentClassifierService
       text: string;
       intent: string;
     }> = [
+      // SAUDAÇÕES
+
+      {
+        text: 'oi',
+        intent: 'saudacao',
+      },
+
+      {
+        text: 'boa tarde',
+        intent: 'saudacao',
+      },
+
+      {
+        text: 'bom dia',
+        intent: 'saudacao',
+      },
+
+      // AGRADECIMENTO
+
+      {
+        text: 'obrigado',
+        intent: 'agradecimento',
+      },
+
+      {
+        text: 'valeu',
+        intent: 'agradecimento',
+      },
+
       // CURSOS
 
       {
         text:
           'quero aprender backend com java',
-        intent: 'buscar_curso',
-      },
-
-      {
-        text:
-          'curso de java',
-        intent: 'buscar_curso',
-      },
-
-      {
-        text:
-          'curso backend',
-        intent: 'buscar_curso',
-      },
-
-      {
-        text:
-          'curso de react',
-        intent: 'buscar_curso',
-      },
-
-      {
-        text:
-          'curso de spring boot',
         intent: 'buscar_curso',
       },
 
@@ -353,63 +355,21 @@ export class IntentClassifierService
 
       {
         text:
-          'curso de nodejs',
+          'curso de react',
         intent: 'buscar_curso',
-      },
-
-      {
-        text:
-          'quero estudar tecnologia',
-        intent: 'buscar_curso',
-      },
-
-      // AULAS
-
-      {
-        text:
-          'aulas de java',
-        intent: 'buscar_aula',
-      },
-
-      {
-        text:
-          'video aula de sql',
-        intent: 'buscar_aula',
-      },
-
-      // TRILHAS
-
-      {
-        text:
-          'trilha backend',
-        intent: 'buscar_trilha',
-      },
-
-      // CONTEÚDO
-
-      {
-        text:
-          'o que e spring boot',
-        intent: 'buscar_conteudo',
-      },
-
-      {
-        text:
-          'como funciona docker',
-        intent: 'buscar_conteudo',
       },
 
       // IA
 
       {
         text:
-          'machine learning',
+          'curso de inteligencia artificial',
         intent: 'buscar_ia',
       },
 
       {
         text:
-          'curso de inteligencia artificial',
+          'machine learning',
         intent: 'buscar_ia',
       },
 

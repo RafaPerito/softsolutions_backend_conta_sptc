@@ -75,7 +75,7 @@ export class MeilisearchService {
   }
 
   // ====================================================
-  // CONFIGURAÇÃO DO ÍNDICE
+  // CONFIGURE INDEX
   // ====================================================
 
   async configureIndex(): Promise<void> {
@@ -86,17 +86,21 @@ export class MeilisearchService {
       '⚙️ Configurando índice...',
     );
 
-    // ============================================
+    // ====================================================
     // SEARCHABLE ATTRIBUTES
-    // ============================================
+    // ====================================================
 
     await this.client.waitForTask(
       (
         await index.updateSearchableAttributes(
           [
-            'searchText',
-
             'titulo',
+
+            'curso',
+
+            'categoria',
+
+            'modulo',
 
             'descricao',
 
@@ -104,29 +108,21 @@ export class MeilisearchService {
 
             'conteudo',
 
-            'curso',
-
-            'modulo',
-
             'professor',
 
-            'categoria',
-
-            'tipo',
+            'searchText',
 
             'semanticTags',
 
             'semanticConcepts',
-
-            'semanticCategories',
           ],
         )
       ).taskUid,
     );
 
-    // ============================================
-    // FILTERABLE ATTRIBUTES
-    // ============================================
+    // ====================================================
+    // FILTERABLE
+    // ====================================================
 
     await this.client.waitForTask(
       (
@@ -137,16 +133,14 @@ export class MeilisearchService {
             'categoria',
 
             'professor',
-
-            'semanticCategories',
           ],
         )
       ).taskUid,
     );
 
-    // ============================================
-    // SORTABLE ATTRIBUTES
-    // ============================================
+    // ====================================================
+    // SORTABLE
+    // ====================================================
 
     await this.client.waitForTask(
       (
@@ -160,24 +154,69 @@ export class MeilisearchService {
       ).taskUid,
     );
 
-    // ============================================
+    // ====================================================
+    // TYPO TOLERANCE
+    // ====================================================
+
+    await this.client.waitForTask(
+      (
+        await index.updateTypoTolerance({
+          enabled: true,
+
+          minWordSizeForTypos: {
+            oneTypo: 5,
+            twoTypos: 9,
+          },
+        })
+      ).taskUid,
+    );
+
+    // ====================================================
+    // STOP WORDS
+    // ====================================================
+
+    await this.client.waitForTask(
+      (
+        await index.updateStopWords([
+          'de',
+          'da',
+          'do',
+          'das',
+          'dos',
+          'e',
+          'a',
+          'o',
+          'os',
+          'as',
+          'para',
+          'com',
+          'em',
+          'curso',
+          'aula',
+          'video',
+          'videos',
+        ])
+      ).taskUid,
+    );
+
+    // ====================================================
     // RANKING RULES
-    // ============================================
+    // ====================================================
 
     await this.client.waitForTask(
       (
         await index.updateRankingRules([
-          'exactness',
-
           'words',
+
+          'typo',
 
           'proximity',
 
           'attribute',
 
-          'typo',
-
           'sort',
+
+          'exactness',
         ])
       ).taskUid,
     );
@@ -188,7 +227,7 @@ export class MeilisearchService {
   }
 
   // ====================================================
-  // REINDEXAÇÃO
+  // REINDEX
   // ====================================================
 
   async replaceAllDocuments(
@@ -196,10 +235,6 @@ export class MeilisearchService {
   ): Promise<void> {
     const index =
       await this.getOrCreateIndex();
-
-    this.logger.log(
-      '⚙️ Configurando índice...',
-    );
 
     await this.configureIndex();
 
@@ -211,53 +246,50 @@ ${documents.length}
 `);
 
     // ====================================================
-    // UPSERT REAL (SEM DUPLICAÇÃO)
+    // DELETE OLD DOCUMENTS
     // ====================================================
 
     this.logger.log(
-      '📦 Atualizando documentos...',
+      '🗑️ Limpando documentos antigos...',
     );
 
-    const task =
-      await index.updateDocuments(
+    const deleteTask =
+      await index.deleteAllDocuments();
+
+    await this.client.waitForTask(
+      deleteTask.taskUid,
+    );
+
+    // ====================================================
+    // INSERT NEW DOCUMENTS
+    // ====================================================
+
+    this.logger.log(
+      '📦 Inserindo documentos...',
+    );
+
+    const insertTask =
+      await index.addDocuments(
         documents,
       );
 
     const result =
       await this.client.waitForTask(
-        task.taskUid,
+        insertTask.taskUid,
       );
-
-    this.logger.log(`
-================ UPDATE TASK RESULT ================
-
-${JSON.stringify(
-  result,
-  null,
-  2,
-)}
-`);
-
-    // ====================================================
-    // VALIDAÇÃO
-    // ====================================================
 
     if (
       result.status !==
       'succeeded'
     ) {
       this.logger.error(
-        '❌ Falha ao indexar documentos.',
+        '❌ Erro ao indexar.',
       );
 
       throw new Error(
         JSON.stringify(result),
       );
     }
-
-    // ====================================================
-    // STATS
-    // ====================================================
 
     const stats =
       await index.getStats();
@@ -278,7 +310,7 @@ ${JSON.stringify(
   }
 
   // ====================================================
-  // DELETE ALL DOCUMENTS
+  // DELETE ALL
   // ====================================================
 
   async deleteAllDocuments(): Promise<void> {
@@ -294,7 +326,7 @@ ${JSON.stringify(
   }
 
   // ====================================================
-  // BUSCA TEXTUAL
+  // SEARCH
   // ====================================================
 
   async search(
@@ -303,28 +335,35 @@ ${JSON.stringify(
     const index =
       await this.getOrCreateIndex();
 
+    const normalizedQuery =
+      query
+        ?.toLowerCase()
+        ?.trim();
+
     this.logger.log(
-      `🔎 Executando busca: "${query}"`,
+      `🔎 Executando busca: "${normalizedQuery}"`,
     );
 
     const response =
-      await index.search(query, {
-        limit: 20,
+      await index.search(
+        normalizedQuery,
+        {
+          limit: 15,
 
-        showRankingScore: true,
+          showRankingScore: true,
 
-        attributesToHighlight: [
-          'titulo',
+          matchingStrategy:
+            'all',
 
-          'descricao',
+          attributesToHighlight: [
+            'titulo',
 
-          'curso',
+            'descricao',
 
-          'modulo',
-
-          'professor',
-        ],
-      });
+            'curso',
+          ],
+        },
+      );
 
     this.logger.log(`
 ================ RAW MEILI RESPONSE ================
@@ -337,7 +376,7 @@ ${JSON.stringify(
 `);
 
     this.logger.log(
-      `📊 Hits retornados pelo Meili: ${response.hits.length}`,
+      `📊 Hits retornados: ${response.hits.length}`,
     );
 
     return (response.hits ??
@@ -345,7 +384,7 @@ ${JSON.stringify(
   }
 
   // ====================================================
-  // AUTOCOMPLETE / SUGGESTIONS
+  // SUGGESTIONS
   // ====================================================
 
   async getSuggestions(
@@ -356,14 +395,15 @@ ${JSON.stringify(
 
     const response =
       await index.search(query, {
-        limit: 8,
+        limit: 10,
+
+        matchingStrategy:
+          'last',
 
         attributesToRetrieve: [
           'titulo',
 
           'curso',
-
-          'categoria',
         ],
       });
 
@@ -381,12 +421,6 @@ ${JSON.stringify(
       if (hit.curso) {
         suggestions.add(
           hit.curso,
-        );
-      }
-
-      if (hit.categoria) {
-        suggestions.add(
-          hit.categoria,
         );
       }
     }

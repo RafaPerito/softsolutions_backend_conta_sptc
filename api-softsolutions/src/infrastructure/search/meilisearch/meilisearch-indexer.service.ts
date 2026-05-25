@@ -1,4 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+} from '@nestjs/common';
 
 import { DataSource } from 'typeorm';
 
@@ -27,14 +30,44 @@ export class MeilisearchIndexerService {
   ) {}
 
   // ====================================================
-  // DETECÇÃO SEMÂNTICA
+  // NORMALIZE
   // ====================================================
 
-  private detectSemanticData(text: string) {
-    const normalized = text
+  private normalize(
+    text: string,
+  ): string {
+    return (text ?? '')
       .toLowerCase()
       .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '');
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^\w\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  // ====================================================
+  // BUILD SEARCH TEXT
+  // ====================================================
+
+  private buildSearchText(
+    values: string[],
+  ): string {
+    return values
+      .filter(Boolean)
+      .map((v) => this.normalize(v))
+      .join(' ')
+      .trim();
+  }
+
+  // ====================================================
+  // DETECT SEMANTIC DATA
+  // ====================================================
+
+  private detectSemanticData(
+    text: string,
+  ) {
+    const normalized =
+      this.normalize(text);
 
     const semanticTags =
       new Set<string>();
@@ -48,37 +81,61 @@ export class MeilisearchIndexerService {
     for (const [key, knowledge] of Object.entries(
       SEMANTIC_KNOWLEDGE,
     )) {
-      const relatedTerms = [
+      const terms = [
         key,
+
         ...knowledge.synonyms,
+
+        ...(knowledge.relatedTerms ?? []),
       ];
 
       const matched =
-        relatedTerms.some((term) =>
+        terms.some((term) =>
           normalized.includes(
-            term.toLowerCase(),
+            this.normalize(term),
           ),
         );
 
-      if (!matched) continue;
+      if (!matched) {
+        continue;
+      }
 
-      semanticTags.add(key);
+      // ====================================================
+      // TAG PRINCIPAL
+      // ====================================================
 
-      knowledge.synonyms.forEach((s) =>
-        semanticTags.add(s),
+      semanticTags.add(
+        this.normalize(key),
       );
 
-      knowledge.concepts.forEach((c) =>
-        semanticConcepts.add(c),
+      // ====================================================
+      // CONCEPTS
+      // ====================================================
+
+      knowledge.concepts.forEach(
+        (concept) =>
+          semanticConcepts.add(
+            this.normalize(
+              concept,
+            ),
+          ),
       );
+
+      // ====================================================
+      // CATEGORY
+      // ====================================================
 
       semanticCategories.add(
-        knowledge.category,
+        this.normalize(
+          knowledge.category,
+        ),
       );
     }
 
     return {
-      semanticTags: [...semanticTags],
+      semanticTags: [
+        ...semanticTags,
+      ],
 
       semanticConcepts: [
         ...semanticConcepts,
@@ -91,60 +148,65 @@ export class MeilisearchIndexerService {
   }
 
   // ====================================================
-  // REINDEXAÇÃO
+  // REINDEX
   // ====================================================
 
   async reindexCursosEAulas() {
     this.logger.log(
-      '🚀 Iniciando reindexação semântica...',
+      '🚀 Iniciando reindexação...',
     );
 
     const cursos =
       await this.loadCursosComAulas();
-
-    // ====================================================
-    // DEBUG DATABASE
-    // ====================================================
 
     this.logger.log(`
 ================ DATABASE DEBUG ================
 
 TOTAL CURSOS:
 ${cursos.length}
-
-PRIMEIRO CURSO:
-${JSON.stringify(
-  cursos[0],
-  null,
-  2,
-)}
 `);
-
-    // ====================================================
-    // EVITA DUPLICAÇÃO
-    // ====================================================
 
     const documentsMap =
       new Map<string, any>();
 
     // ====================================================
-    // PROCESSA CURSOS
+    // CURSOS
     // ====================================================
 
     for (const curso of cursos) {
       this.logger.log(
-        `📚 Processando curso ${curso.id} - ${curso.nomeCurso}`,
+        `📚 Curso ${curso.id} - ${curso.nomeCurso}`,
       );
 
       const semanticData =
         this.detectSemanticData(`
-        ${curso.nomeCurso}
-        ${curso.descricaoCurta}
-        ${curso.descricaoDetalhada}
-        ${curso.categoria}
-      `);
+${curso.nomeCurso}
 
-      const cursoDoc: any = {
+${curso.descricaoCurta}
+
+${curso.descricaoDetalhada}
+
+${curso.categoria}
+`);
+
+      const cursoSearchText =
+        this.buildSearchText([
+          curso.nomeCurso,
+
+          curso.descricaoCurta,
+
+          curso.descricaoDetalhada,
+
+          curso.professor,
+
+          curso.categoria,
+
+          ...semanticData.semanticTags,
+
+          ...semanticData.semanticConcepts,
+        ]);
+
+      const cursoDoc = {
         id: `curso-${curso.id}`,
 
         tipo: 'curso',
@@ -153,10 +215,12 @@ ${JSON.stringify(
 
         aulaId: null,
 
-        titulo: curso.nomeCurso,
+        titulo:
+          curso.nomeCurso,
 
         descricao:
-          curso.descricaoCurta || '',
+          curso.descricaoCurta ||
+          '',
 
         descricaoDetalhada:
           curso.descricaoDetalhada ||
@@ -173,69 +237,30 @@ ${JSON.stringify(
           curso.professor || '',
 
         status:
-          curso.status || 'ativo',
+          curso.status ||
+          'ativo',
 
         avaliacao:
-          curso.avaliacao || 0,
+          curso.avaliacao ||
+          0,
 
         imagemCurso:
-          curso.imagemCurso || null,
+          curso.imagemCurso ||
+          null,
 
         tempoCurso:
-          curso.tempoCurso || null,
+          curso.tempoCurso ||
+          null,
 
         modulo: null,
 
-        curso: curso.nomeCurso,
+        curso:
+          curso.nomeCurso,
 
         videoUrl: null,
 
-        // ====================================================
-        // CAMPO AGREGADOR
-        // ====================================================
-
-        searchText: `
-curso
-curso online
-curso de tecnologia
-curso profissionalizante
-aprendizado
-educacao
-educação
-professor
-modulo
-módulo
-conteudo
-conteúdo
-video aula
-vídeo aula
-backend
-frontend
-programacao
-programação
-
-${curso.nomeCurso}
-
-${curso.descricaoCurta}
-
-${curso.descricaoDetalhada}
-
-${curso.professor}
-
-${curso.categoria}
-
-${semanticData.semanticTags.join(
-  ' ',
-)}
-
-${semanticData.semanticConcepts.join(
-  ' ',
-)}
-
-${semanticData.semanticCategories.join(
-  ' ',
-)}
-`,
+        searchText:
+          cursoSearchText,
 
         semanticTags:
           semanticData.semanticTags,
@@ -253,24 +278,25 @@ ${semanticData.semanticCategories.join(
       );
 
       // ====================================================
-      // PROCESSA MÓDULOS
+      // MODULOS / AULAS
       // ====================================================
 
       if (
         curso.modulos &&
-        Array.isArray(curso.modulos)
+        Array.isArray(
+          curso.modulos,
+        )
       ) {
         for (const modulo of curso.modulos) {
           const aulas =
-            (modulo as any).aulas ||
-            [];
-
-          // ====================================================
-          // EVITA AULAS DUPLICADAS
-          // ====================================================
+            (modulo as any)
+              .aulas || [];
 
           const aulasUnicas =
-            new Map<number, any>();
+            new Map<
+              number,
+              any
+            >();
 
           for (const aula of aulas) {
             aulasUnicas.set(
@@ -281,31 +307,54 @@ ${semanticData.semanticCategories.join(
 
           for (const aula of aulasUnicas.values()) {
             this.logger.log(
-              `🎥 Processando aula ${aula.id} - ${aula.nomeAula}`,
+              `🎥 Aula ${aula.id} - ${aula.nomeAula}`,
             );
 
             const semanticData =
               this.detectSemanticData(`
-              ${curso.nomeCurso}
-              ${curso.descricaoCurta}
-              ${curso.descricaoDetalhada}
+${curso.nomeCurso}
 
-              ${modulo.nomeModulo}
+${curso.descricaoDetalhada}
 
-              ${aula.nomeAula}
-              ${aula.descricaoConteudo}
-            `);
+${modulo.nomeModulo}
 
-            const aulaDoc: any = {
+${aula.nomeAula}
+
+${aula.descricaoConteudo}
+`);
+
+            const aulaSearchText =
+              this.buildSearchText([
+                aula.nomeAula,
+
+                aula.descricaoConteudo,
+
+                curso.nomeCurso,
+
+                curso.professor,
+
+                curso.categoria,
+
+                modulo.nomeModulo,
+
+                ...semanticData.semanticTags,
+
+                ...semanticData.semanticConcepts,
+              ]);
+
+            const aulaDoc = {
               id: `aula-${aula.id}`,
 
               tipo: 'aula',
 
-              cursoId: curso.id,
+              cursoId:
+                curso.id,
 
-              aulaId: aula.id,
+              aulaId:
+                aula.id,
 
-              titulo: aula.nomeAula,
+              titulo:
+                aula.nomeAula,
 
               descricao:
                 aula.descricaoConteudo ||
@@ -316,21 +365,25 @@ ${semanticData.semanticCategories.join(
                 '',
 
               categoria:
-                curso.categoria || '',
+                curso.categoria ||
+                '',
 
               conteudo:
                 aula.descricaoConteudo ||
                 '',
 
               professor:
-                curso.professor || '',
+                curso.professor ||
+                '',
 
               status:
-                (aula as any).status ||
+                (aula as any)
+                  .status ||
                 'ativo',
 
               avaliacao:
-                curso.avaliacao || 0,
+                curso.avaliacao ||
+                0,
 
               imagemCurso:
                 curso.imagemCurso ||
@@ -348,55 +401,15 @@ ${semanticData.semanticCategories.join(
                 curso.nomeCurso,
 
               videoUrl:
-                aula.videoUrl || null,
+                aula.videoUrl ||
+                null,
 
               tempoAula:
-                aula.tempoAula || null,
+                aula.tempoAula ||
+                null,
 
-              // ====================================================
-              // CAMPO AGREGADOR
-              // ====================================================
-
-              searchText: `
-aula
-video aula
-vídeo aula
-conteudo educacional
-conteúdo educacional
-professor
-curso
-modulo
-módulo
-aprendizado
-backend
-frontend
-programacao
-programação
-
-${aula.nomeAula}
-
-${aula.descricaoConteudo}
-
-${curso.nomeCurso}
-
-${curso.professor}
-
-${curso.categoria}
-
-${modulo.nomeModulo}
-
-${semanticData.semanticTags.join(
-  ' ',
-)}
-
-${semanticData.semanticConcepts.join(
-  ' ',
-)}
-
-${semanticData.semanticCategories.join(
-  ' ',
-)}
-`,
+              searchText:
+                aulaSearchText,
 
               semanticTags:
                 semanticData.semanticTags,
@@ -418,16 +431,13 @@ ${semanticData.semanticCategories.join(
     }
 
     // ====================================================
-    // CONVERTE MAP PARA ARRAY
+    // FINAL ARRAY
     // ====================================================
 
-    const documents = Array.from(
-      documentsMap.values(),
-    );
-
-    // ====================================================
-    // DEBUG DOCUMENTS
-    // ====================================================
+    const documents =
+      Array.from(
+        documentsMap.values(),
+      );
 
     this.logger.log(`
 ================ DOCUMENT DEBUG ================
@@ -444,11 +454,11 @@ ${JSON.stringify(
 `);
 
     // ====================================================
-    // INDEXAÇÃO
+    // SEND TO MEILI
     // ====================================================
 
     this.logger.log(
-      '📦 Enviando documentos para o Meilisearch...',
+      '📦 Enviando documentos...',
     );
 
     await this.meiliService.replaceAllDocuments(

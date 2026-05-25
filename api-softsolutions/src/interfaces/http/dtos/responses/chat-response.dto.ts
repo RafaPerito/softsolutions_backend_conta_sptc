@@ -8,4 +8,16 @@ export class ChatResponseDto {
   suggestions!: string[];
 
   requiresHumanSupport!: boolean;
+
+  relatedCourses?: string[];
+
+  semanticContext?: {
+    intent?: string;
+
+    categories?: string[];
+
+    concepts?: string[];
+  };
+
+  conversationId?: string;
 }

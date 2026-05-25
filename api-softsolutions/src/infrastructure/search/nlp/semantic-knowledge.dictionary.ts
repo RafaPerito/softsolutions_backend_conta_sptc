@@ -3,7 +3,7 @@ export interface SemanticKnowledgeEntry {
 
   concepts: string[];
 
-  relatedTerms: string[];
+  relatedTerms?: string[];
 
   boostTerms: string[];
 
@@ -31,9 +31,11 @@ export const AMBIGUOUS_TERMS: Record<
   react: ['reactive'],
 
   sql: ['nosql'],
-
-  c: ['c#', 'c++'],
 };
+
+// ====================================================
+// CONTROLLED SEMANTIC KNOWLEDGE
+// ====================================================
 
 export const SEMANTIC_KNOWLEDGE: Record<
   string,
@@ -48,47 +50,20 @@ export const SEMANTIC_KNOWLEDGE: Record<
       'api',
       'servidor',
       'rest',
-      'spring',
-      'java',
-      'python',
-      'php',
-      'node',
-      'nestjs',
-      'express',
     ],
 
     concepts: [
       'desenvolvimento backend',
-      'microsservicos',
-      'banco de dados',
-      'integracao',
-      'arquitetura server side',
-    ],
-
-    relatedTerms: [
-      'spring boot',
-      'flask',
-      'django',
-      'fastapi',
-      'nestjs',
-      'express',
-      'api rest',
-      'jwt',
     ],
 
     boostTerms: [
       'backend',
       'api',
-      'java',
-      'python',
-      'php',
-      'nodejs',
     ],
 
     intents: [
       'buscar_curso',
       'buscar_aula',
-      'buscar_trilha',
     ],
 
     category: 'backend',
@@ -103,45 +78,22 @@ export const SEMANTIC_KNOWLEDGE: Record<
   frontend: {
     synonyms: [
       'ui',
-      'ux',
       'interface',
       'web',
-      'javascript',
-      'react',
-      'angular',
-      'vue',
-      'html',
-      'css',
     ],
 
     concepts: [
-      'interfaces',
-      'experiencia do usuario',
-      'spa',
-      'responsividade',
-    ],
-
-    relatedTerms: [
-      'browser',
-      'dom',
-      'componentes',
-      'layout',
-      'web design',
       'frontend web',
     ],
 
     boostTerms: [
       'frontend',
-      'react',
-      'javascript',
-      'html',
-      'css',
+      'web',
     ],
 
     intents: [
       'buscar_curso',
       'buscar_aula',
-      'buscar_trilha',
     ],
 
     category: 'frontend',
@@ -157,91 +109,24 @@ export const SEMANTIC_KNOWLEDGE: Record<
     synonyms: [
       'spring',
       'spring boot',
-      'jpa',
-      'hibernate',
-      'jdk',
-      'jvm',
-      'maven',
-      'java backend',
     ],
 
     concepts: [
-      'backend',
-      'api',
-      'orientacao a objetos',
-      'rest',
-      'microsservicos',
-    ],
-
-    relatedTerms: [
-      'backend',
-      'api',
-      'servidor',
-      'web',
-      'spring framework',
-      'java web',
+      'backend java',
     ],
 
     boostTerms: [
       'java',
       'spring',
-      'backend',
-      'api',
-      'spring boot',
-    ],
-
-    intents: [
-      'buscar_curso',
-      'buscar_aula',
-      'buscar_trilha',
     ],
 
     exclusions: [
       'javascript',
     ],
 
-    category: 'backend',
-
-    searchPriority: 10,
-  },
-
-  // ====================================================
-  // SPRING
-  // ====================================================
-
-  spring: {
-    synonyms: [
-      'spring boot',
-      'java',
-      'jpa',
-      'hibernate',
-    ],
-
-    concepts: [
-      'backend',
-      'api',
-      'microsservicos',
-    ],
-
-    relatedTerms: [
-      'java backend',
-      'spring framework',
-      'rest api',
-    ],
-
-    boostTerms: [
-      'spring',
-      'spring boot',
-      'java',
-    ],
-
     intents: [
       'buscar_curso',
       'buscar_aula',
-    ],
-
-    exclusions: [
-      'javascript',
     ],
 
     category: 'backend',
@@ -257,34 +142,15 @@ export const SEMANTIC_KNOWLEDGE: Record<
     synonyms: [
       'js',
       'typescript',
-      'node',
-      'nodejs',
-      'react',
-      'angular',
-      'vue',
-      'next',
     ],
 
     concepts: [
-      'frontend',
-      'spa',
-      'web',
-      'interface',
-    ],
-
-    relatedTerms: [
-      'frontend',
-      'browser',
-      'dom',
-      'ui',
-      'componentes',
+      'frontend javascript',
     ],
 
     boostTerms: [
       'javascript',
       'frontend',
-      'react',
-      'node',
     ],
 
     intents: [
@@ -305,20 +171,10 @@ export const SEMANTIC_KNOWLEDGE: Record<
     synonyms: [
       'reactjs',
       'jsx',
-      'frontend',
     ],
 
     concepts: [
-      'spa',
-      'componentizacao',
-      'frontend moderno',
-    ],
-
-    relatedTerms: [
-      'componentes',
-      'hooks',
-      'frontend',
-      'estado',
+      'frontend react',
     ],
 
     boostTerms: [
@@ -326,13 +182,13 @@ export const SEMANTIC_KNOWLEDGE: Record<
       'reactjs',
     ],
 
+    exclusions: [
+      'reactive',
+    ],
+
     intents: [
       'buscar_curso',
       'buscar_aula',
-    ],
-
-    exclusions: [
-      'reactive',
     ],
 
     category: 'frontend',
@@ -347,26 +203,17 @@ export const SEMANTIC_KNOWLEDGE: Record<
   node: {
     synonyms: [
       'nodejs',
-      'express',
       'nestjs',
+      'express',
     ],
 
     concepts: [
-      'backend',
-      'api',
-      'javascript backend',
-    ],
-
-    relatedTerms: [
-      'servidor',
-      'backend javascript',
-      'rest api',
+      'backend node',
     ],
 
     boostTerms: [
       'node',
       'nestjs',
-      'nodejs',
     ],
 
     intents: [
@@ -388,37 +235,21 @@ export const SEMANTIC_KNOWLEDGE: Record<
       'django',
       'flask',
       'fastapi',
-      'pandas',
-      'numpy',
     ],
 
     concepts: [
-      'backend',
-      'dados',
-      'automacao',
-      'ia',
-    ],
-
-    relatedTerms: [
-      'machine learning',
-      'api',
-      'backend',
-      'dados',
-      'automacao',
-      'data science',
+      'backend python',
     ],
 
     boostTerms: [
       'python',
       'django',
       'flask',
-      'fastapi',
     ],
 
     intents: [
       'buscar_curso',
       'buscar_aula',
-      'buscar_ia',
     ],
 
     category: 'backend',
@@ -434,30 +265,15 @@ export const SEMANTIC_KNOWLEDGE: Record<
     synonyms: [
       'postgresql',
       'mysql',
-      'oracle',
-      'sqlite',
-      'sqlserver',
     ],
 
     concepts: [
-      'dados',
-      'persistencia',
-      'query',
       'banco de dados',
-    ],
-
-    relatedTerms: [
-      'database',
-      'consultas',
-      'modelagem',
-      'relacional',
     ],
 
     boostTerms: [
       'sql',
       'database',
-      'postgresql',
-      'mysql',
     ],
 
     intents: [
@@ -478,27 +294,15 @@ export const SEMANTIC_KNOWLEDGE: Record<
     synonyms: [
       'container',
       'compose',
-      'kubernetes',
-      'devops',
     ],
 
     concepts: [
-      'infraestrutura',
-      'deploy',
-      'cloud',
-    ],
-
-    relatedTerms: [
-      'cloud',
-      'deploy',
-      'containerizacao',
       'infraestrutura',
     ],
 
     boostTerms: [
       'docker',
       'devops',
-      'kubernetes',
     ],
 
     intents: [
@@ -512,52 +316,6 @@ export const SEMANTIC_KNOWLEDGE: Record<
   },
 
   // ====================================================
-  // IA
-  // ====================================================
-
-  ia: {
-    synonyms: [
-      'ai',
-      'machine learning',
-      'deep learning',
-      'llm',
-      'chatgpt',
-      'inteligencia artificial',
-    ],
-
-    concepts: [
-      'inteligencia artificial',
-      'dados',
-      'automacao',
-      'redes neurais',
-    ],
-
-    relatedTerms: [
-      'machine learning',
-      'deep learning',
-      'neural network',
-      'generative ai',
-      'modelos de linguagem',
-    ],
-
-    boostTerms: [
-      'ia',
-      'machine learning',
-      'chatgpt',
-      'deep learning',
-    ],
-
-    intents: [
-      'buscar_ia',
-      'buscar_curso',
-    ],
-
-    category: 'ai',
-
-    searchPriority: 10,
-  },
-
-  // ====================================================
   // CURSO
   // ====================================================
 
@@ -565,28 +323,15 @@ export const SEMANTIC_KNOWLEDGE: Record<
     synonyms: [
       'treinamento',
       'aprendizado',
-      'formacao',
-      'capacitação',
     ],
 
     concepts: [
       'educacao',
-      'plataforma',
-    ],
-
-    relatedTerms: [
-      'aula',
-      'conteudo',
-      'certificado',
-      'modulo',
-      'trilha',
     ],
 
     boostTerms: [
       'curso',
       'aula',
-      'conteudo',
-      'trilha',
     ],
 
     intents: [
@@ -606,24 +351,14 @@ export const SEMANTIC_KNOWLEDGE: Record<
     synonyms: [
       'diploma',
       'comprovante',
-      'certificacao',
     ],
 
     concepts: [
       'emissao',
-      'conclusao',
-      'curso finalizado',
-    ],
-
-    relatedTerms: [
-      'baixar certificado',
-      'emitir certificado',
-      'pdf',
     ],
 
     boostTerms: [
       'certificado',
-      'certificacao',
     ],
 
     intents: [
@@ -644,24 +379,15 @@ export const SEMANTIC_KNOWLEDGE: Record<
       'acesso',
       'senha',
       'entrar',
-      'autenticacao',
     ],
 
     concepts: [
       'usuario',
-      'credenciais',
-    ],
-
-    relatedTerms: [
-      'esqueci senha',
-      'erro login',
-      'nao consigo acessar',
     ],
 
     boostTerms: [
       'login',
       'senha',
-      'acesso',
     ],
 
     intents: [

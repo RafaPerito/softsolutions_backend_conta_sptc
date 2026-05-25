@@ -20,42 +20,22 @@ export class ProcessChatUseCase {
     private readonly openaiService: OpenaiService,
   ) {}
 
-  async execute(
-    dto: ChatRequestDto,
-  ): Promise<ChatResponseDto> {
-    // ====================================================
-    // NLP
-    // ====================================================
+  private buildContext(
+    results: any[],
+  ): string {
+    if (!results.length) {
+      return `
+Nenhum conteúdo relevante encontrado na plataforma.
+`;
+    }
 
-    const processed =
-      await this.queryUnderstandingService.process(
-        dto.message,
-      );
-
-    // ====================================================
-    // SEARCH
-    // ====================================================
-
-    const results =
-      await this.searchTextUseCase.execute(
-        dto.message,
-      );
-
-    // ====================================================
-    // TOP RESULTS
-    // ====================================================
-
-    const topResults =
-      results.slice(0, 5);
-
-    // ====================================================
-    // CONTEXT
-    // ====================================================
-
-    const context = topResults
+    return results
       .map(
         (item, index) => `
-${index + 1}. ${item.titulo}
+# Resultado ${index + 1}
+
+Título:
+${item.titulo}
 
 Descrição:
 ${item.descricao}
@@ -65,48 +45,181 @@ ${item.categoria}
 
 Tipo:
 ${item.tipo}
+
+Curso:
+${item.curso ?? 'N/A'}
+
+Professor:
+${item.professor ?? 'N/A'}
 `,
       )
       .join('\n');
+  }
+
+  private generateSuggestions(
+    results: any[],
+  ): string[] {
+    return [
+      ...new Set(
+        results
+          .map(
+            (item) =>
+              item.curso ||
+              item.titulo,
+          )
+          .filter(Boolean),
+      ),
+    ].slice(0, 5);
+  }
+
+  async execute(
+    dto: ChatRequestDto,
+  ): Promise<ChatResponseDto> {
+    const processed =
+      await this.queryUnderstandingService.process(
+        dto.message,
+      );
 
     // ====================================================
-    // SUPPORT DETECTION
+    // SMALL TALK
     // ====================================================
+
+    if (
+      [
+        'saudacao',
+        'agradecimento',
+        'despedida',
+        'conversa',
+      ].includes(processed.intent)
+    ) {
+      const response =
+        await this.openaiService.generateSmallTalkResponse(
+          dto.message,
+          dto.history ?? [],
+        );
+
+      return {
+        response,
+
+        intent: processed.intent,
+
+        confidence:
+          processed.confidence,
+
+        suggestions: [],
+
+        requiresHumanSupport: false,
+
+        relatedCourses: [],
+
+        semanticContext: {
+          intent:
+            processed.intent,
+
+          categories: [],
+
+          concepts: [],
+        },
+      };
+    }
+
+    // ====================================================
+    // SEARCH ENABLED ONLY FOR SEARCH INTENTS
+    // ====================================================
+
+    let results: any[] = [];
+
+    const searchableIntents = [
+      'buscar_curso',
+      'buscar_aula',
+      'buscar_trilha',
+      'buscar_ia',
+    ];
+
+    if (
+      searchableIntents.includes(
+        processed.intent,
+      )
+    ) {
+      results =
+        await this.searchTextUseCase.execute(
+          dto.message,
+        );
+    }
+
+    // ====================================================
+    // FILTER SEMANTIC RESULTS
+    // ====================================================
+
+    const filteredResults =
+      results.filter(
+        (item: any) =>
+          item.semanticScore ===
+            undefined ||
+          item.semanticScore > 0,
+      );
+
+    const topResults =
+      filteredResults.slice(0, 5);
+
+    // ====================================================
+    // IA FALLBACK
+    // ====================================================
+
+    if (
+      processed.intent ===
+        'buscar_ia' &&
+      !topResults.length
+    ) {
+      return {
+        response: `
+No momento, a SoftSolutions ainda não possui cursos específicos de Inteligência Artificial ou Machine Learning.
+
+Atualmente nossa plataforma é focada em desenvolvimento web, backend, frontend e tecnologias modernas de software 😊
+`,
+
+        intent: processed.intent,
+
+        confidence:
+          processed.confidence,
+
+        suggestions: [],
+
+        requiresHumanSupport: false,
+
+        relatedCourses: [],
+
+        semanticContext: {
+          intent:
+            processed.intent,
+
+          categories:
+            processed.categories ??
+            [],
+
+          concepts:
+            processed.concepts ??
+            [],
+        },
+      };
+    }
+
+    const context =
+      this.buildContext(
+        topResults,
+      );
 
     const requiresHumanSupport =
-      processed.confidence < 0.30;
-
-    // ====================================================
-    // PROMPT
-    // ====================================================
-
-    const prompt = `
-Pergunta do usuário:
-${dto.message}
-
-Intent detectada:
-${processed.intent}
-
-Resultados encontrados:
-${context}
-
-Instruções:
-- responda naturalmente
-- seja amigável
-- recomende cursos quando necessário
-- explique funcionalidades da plataforma
-- utilize os resultados encontrados
-- não invente informações
-- se necessário, sugira suporte humano
-`;
-
-    // ====================================================
-    // OPENAI
-    // ====================================================
+      processed.confidence < 0.15 &&
+      !topResults.length;
 
     const response =
       await this.openaiService.generateResponse(
-        prompt,
+        dto.message,
+
+        context,
+
+        dto.history ?? [],
       );
 
     return {
@@ -118,11 +231,29 @@ Instruções:
         processed.confidence,
 
       suggestions:
-        topResults.map(
-          (item) => item.titulo,
+        this.generateSuggestions(
+          topResults,
         ),
 
       requiresHumanSupport,
+
+      relatedCourses:
+        this.generateSuggestions(
+          topResults,
+        ),
+
+      semanticContext: {
+        intent:
+          processed.intent,
+
+        categories:
+          processed.categories ??
+          [],
+
+        concepts:
+          processed.concepts ??
+          [],
+      },
     };
   }
 }

@@ -74,6 +74,30 @@ export class SearchTextUseCase {
       'conteúdo',
     ];
 
+  // ====================================================
+  // SMALL TALK TERMS
+  // ====================================================
+
+  private readonly smallTalkTerms =
+    [
+      'oi',
+      'ola',
+      'olá',
+      'bom dia',
+      'boa tarde',
+      'boa noite',
+      'tudo bem',
+      'obrigado',
+      'valeu',
+      'até mais',
+      'ate mais',
+      'kkk',
+      'rs',
+      'blz',
+      'eae',
+      'opa',
+    ];
+
   constructor(
     private readonly meiliService: MeilisearchService,
 
@@ -116,10 +140,112 @@ export class SearchTextUseCase {
       .trim();
   }
 
+  // ====================================================
+  // SMALL TALK DETECTION
+  // ====================================================
+
+  private isSmallTalk(
+    query: string,
+  ): boolean {
+    const normalized =
+      this.normalize(query);
+
+    return this.smallTalkTerms.includes(
+      normalized,
+    );
+  }
+
+  // ====================================================
+  // CLEAN SEMANTIC NOISE
+  // ====================================================
+
+  private removeSemanticNoise(
+    items: SearchItem[],
+    processed: any,
+  ): SearchItem[] {
+    const categories =
+      (
+        processed.categories ??
+        []
+      ).map((c: string) =>
+        this.normalize(c),
+      );
+
+    // ====================================================
+    // IF USER ASKED BACKEND
+    // REMOVE FRONTEND RESULTS
+    // ====================================================
+
+    if (
+      categories.includes(
+        'backend',
+      )
+    ) {
+      items = items.filter(
+        (item: any) => {
+          const category =
+            this.normalize(
+              item.categoria ||
+                '',
+            );
+
+          return (
+            !category.includes(
+              'frontend',
+            )
+          );
+        },
+      );
+    }
+
+    // ====================================================
+    // IF USER ASKED FRONTEND
+    // REMOVE BACKEND RESULTS
+    // ====================================================
+
+    if (
+      categories.includes(
+        'frontend',
+      )
+    ) {
+      items = items.filter(
+        (item: any) => {
+          const category =
+            this.normalize(
+              item.categoria ||
+                '',
+            );
+
+          return (
+            !category.includes(
+              'backend',
+            )
+          );
+        },
+      );
+    }
+
+    return items;
+  }
+
   async execute(
     query: string,
   ): Promise<SearchItem[]> {
     if (!query?.trim()) {
+      return [];
+    }
+
+    // ====================================================
+    // SMALL TALK
+    // ====================================================
+
+    if (
+      this.isSmallTalk(query)
+    ) {
+      this.logger.log(
+        '💬 Small talk detectado. Ignorando busca.',
+      );
+
       return [];
     }
 
@@ -147,21 +273,37 @@ export class SearchTextUseCase {
       );
 
     // ====================================================
-    // EXPANSÃO SEMÂNTICA
+    // IF NO TOKENS
+    // ====================================================
+
+    if (
+      !cleanedTokens.length
+    ) {
+      this.logger.warn(
+        '⚠️ Nenhum token relevante encontrado.',
+      );
+
+      return [];
+    }
+
+    // ====================================================
+    // CONTROLLED EXPANSION
     // ====================================================
 
     const expandedTerms = [
       ...cleanedTokens,
 
-      ...(processed.synonyms ?? []),
+      ...(processed.synonyms ??
+        []).slice(0, 4),
 
-      ...(processed.concepts ?? []),
+      ...(processed.concepts ??
+        []).slice(0, 3),
 
-      ...(processed.relatedTerms ?? []),
+      ...(processed.boostTerms ??
+        []).slice(0, 3),
 
-      ...(processed.boostTerms ?? []),
-
-      ...(processed.categories ?? []),
+      ...(processed.categories ??
+        []).slice(0, 2),
     ];
 
     const expandedQuery =
@@ -205,15 +347,10 @@ ${JSON.stringify(
 `);
 
     // ====================================================
-    // SEARCH STRATEGIES
+    // SEARCH
     // ====================================================
 
     let hits: SearchItem[] = [];
-
-    // ====================================================
-    // STRATEGY 1
-    // EXPANDED QUERY
-    // ====================================================
 
     if (
       this.meiliService.supportsVectorSearch()
@@ -231,58 +368,16 @@ ${JSON.stringify(
     }
 
     // ====================================================
-    // STRATEGY 2
-    // NORMALIZED QUERY
+    // FALLBACK
     // ====================================================
 
     if (!hits.length) {
-      this.logger.warn(
-        '⚠️ Sem resultados na expanded query.',
-      );
-
       hits =
         await this.meiliService.search(
-          processed.normalizedText,
+          cleanedTokens.join(
+            ' ',
+          ),
         );
-    }
-
-    // ====================================================
-    // STRATEGY 3
-    // CLEANED TOKENS
-    // ====================================================
-
-    if (
-      !hits.length &&
-      cleanedTokens.length
-    ) {
-      const tokenQuery =
-        cleanedTokens.join(' ');
-
-      hits =
-        await this.meiliService.search(
-          tokenQuery,
-        );
-    }
-
-    // ====================================================
-    // STRATEGY 4
-    // TOKEN INDIVIDUAL
-    // ====================================================
-
-    if (
-      !hits.length &&
-      cleanedTokens.length
-    ) {
-      for (const token of cleanedTokens) {
-        hits =
-          await this.meiliService.search(
-            token,
-          );
-
-        if (hits.length) {
-          break;
-        }
-      }
     }
 
     this.logger.log(
@@ -304,9 +399,6 @@ ${JSON.stringify(
 
     const concepts =
       processed.concepts ?? [];
-
-    const relatedTerms =
-      processed.relatedTerms ?? [];
 
     // ====================================================
     // RERANK
@@ -343,49 +435,26 @@ ${JSON.stringify(
             item.categoria || '',
           );
 
-        const semanticTags = (
-          item.semanticTags ?? []
-        ).map((t: string) =>
-          this.normalize(t),
-        );
-
-        const semanticConcepts = (
-          item.semanticConcepts ??
-          []
-        ).map((t: string) =>
-          this.normalize(t),
-        );
-
-        const semanticCategories = (
-          item.semanticCategories ??
-          []
-        ).map((t: string) =>
-          this.normalize(t),
-        );
-
         const searchableText = `
 ${titulo}
 ${descricao}
 ${curso}
 ${modulo}
 ${categoria}
-${semanticTags.join(' ')}
-${semanticConcepts.join(' ')}
-${semanticCategories.join(' ')}
 `
           .toLowerCase()
           .trim();
 
         // ====================================================
-        // ENTITY PRIORITY
+        // PRIORIDADE CURSO
         // ====================================================
 
         if (item.tipo === 'curso') {
-          score += 70000;
+          score += 100000;
         }
 
         if (item.tipo === 'aula') {
-          score += 10000;
+          score += 12000;
         }
 
         // ====================================================
@@ -399,47 +468,11 @@ ${semanticCategories.join(' ')}
           if (
             titulo === normalizedToken
           ) {
-            score += 100000;
+            score += 90000;
           }
 
           if (
             titulo.startsWith(
-              normalizedToken,
-            )
-          ) {
-            score += 80000;
-          }
-
-          if (
-            this.exactWordMatch(
-              titulo,
-              normalizedToken,
-            )
-          ) {
-            score += 85000;
-          }
-
-          if (
-            this.exactWordMatch(
-              searchableText,
-              normalizedToken,
-            )
-          ) {
-            score += 50000;
-          }
-
-          if (
-            this.exactWordMatch(
-              descricao,
-              normalizedToken,
-            )
-          ) {
-            score += 25000;
-          }
-
-          if (
-            this.exactWordMatch(
-              curso,
               normalizedToken,
             )
           ) {
@@ -448,86 +481,38 @@ ${semanticCategories.join(' ')}
 
           if (
             this.exactWordMatch(
+              titulo,
+              normalizedToken,
+            )
+          ) {
+            score += 65000;
+          }
+
+          if (
+            this.exactWordMatch(
+              curso,
+              normalizedToken,
+            )
+          ) {
+            score += 50000;
+          }
+
+          if (
+            this.exactWordMatch(
               categoria,
               normalizedToken,
             )
           ) {
-            score += 35000;
+            score += 30000;
           }
-        }
-
-        // ====================================================
-        // SYNONYM BOOST
-        // ====================================================
-
-        for (const synonym of synonyms) {
-          const normalized =
-            this.normalize(
-              synonym,
-            );
 
           if (
             this.exactWordMatch(
-              searchableText,
-              normalized,
-            )
-          ) {
-            score += 22000;
-          }
-
-          if (
-            semanticTags.includes(
-              normalized,
-            )
-          ) {
-            score += 16000;
-          }
-        }
-
-        // ====================================================
-        // CONCEPT BOOST
-        // ====================================================
-
-        for (const concept of concepts) {
-          const normalized =
-            this.normalize(
-              concept,
-            );
-
-          if (
-            semanticConcepts.includes(
-              normalized,
-            )
-          ) {
-            score += 22000;
-          }
-
-          if (
-            searchableText.includes(
-              normalized,
+              descricao,
+              normalizedToken,
             )
           ) {
             score += 18000;
-          }
-        }
-
-        // ====================================================
-        // RELATED TERMS
-        // ====================================================
-
-        for (const related of relatedTerms) {
-          const normalized =
-            this.normalize(
-              related,
-            );
-
-          if (
-            this.exactWordMatch(
-              searchableText,
-              normalized,
-            )
-          ) {
-            score += 14000;
           }
         }
 
@@ -542,89 +527,105 @@ ${semanticCategories.join(' ')}
             );
 
           if (
-            semanticCategories.includes(
-              normalized,
-            )
-          ) {
-            score += 35000;
-          }
-
-          if (
             categoria.includes(
               normalized,
             )
           ) {
-            score += 28000;
+            score += 25000;
           }
         }
 
         // ====================================================
-        // INTENT BOOST
+        // CONCEPT BOOST
         // ====================================================
 
-        switch (
-          processed.intent
-        ) {
-          case 'buscar_curso':
-            if (
-              item.tipo === 'curso'
-            ) {
-              score += 60000;
-            }
-            break;
+        for (const concept of concepts) {
+          const normalized =
+            this.normalize(
+              concept,
+            );
 
-          case 'buscar_aula':
-            if (
-              item.tipo === 'aula'
-            ) {
-              score += 45000;
-            }
-            break;
-
-          case 'buscar_trilha':
-            if (
-              item.tipo === 'curso'
-            ) {
-              score += 30000;
-            }
-            break;
-
-          case 'buscar_ia':
-            if (
-              semanticCategories.includes(
-                'ai',
-              )
-            ) {
-              score += 80000;
-            }
-            break;
+          if (
+            searchableText.includes(
+              normalized,
+            )
+          ) {
+            score += 12000;
+          }
         }
 
         // ====================================================
-        // AVALIAÇÃO
+        // SYNONYM BOOST
+        // ====================================================
+
+        for (const synonym of synonyms) {
+          const normalized =
+            this.normalize(
+              synonym,
+            );
+
+          if (
+            searchableText.includes(
+              normalized,
+            )
+          ) {
+            score += 10000;
+          }
+        }
+
+        // ====================================================
+        // IA BOOST
+        // ====================================================
+
+        if (
+          processed.intent ===
+          'buscar_ia'
+        ) {
+          if (
+            searchableText.includes(
+              'python',
+            )
+          ) {
+            score += 15000;
+          }
+
+          if (
+            searchableText.includes(
+              'dados',
+            )
+          ) {
+            score += 8000;
+          }
+        }
+
+        // ====================================================
+        // HIGH RATED
         // ====================================================
 
         if (
           item.avaliacao &&
           item.avaliacao >= 4.5
         ) {
-          score += 12000;
+          score += 10000;
         }
 
         // ====================================================
-        // GENERIC PENALTY
+        // GENERIC LESSON PENALTY
         // ====================================================
 
         const isGenericLesson =
-          this.genericLessonTerms.includes(
-            titulo,
+          this.genericLessonTerms.some(
+            (term) =>
+              titulo.includes(
+                this.normalize(term),
+              ),
           );
 
         if (
           isGenericLesson &&
           item.tipo === 'aula'
         ) {
-          score -= 18000;
+          score -= 25000;
         }
 
         // ====================================================
@@ -642,45 +643,7 @@ ${semanticCategories.join(' ')}
               normalized,
             )
           ) {
-            score -= 180000;
-          }
-        }
-
-        // ====================================================
-        // PARTIAL MATCH PENALTY
-        // ====================================================
-
-        for (const token of cleanedTokens) {
-          const normalized =
-            this.normalize(token);
-
-          const tokenRegex =
-            new RegExp(
-              `\\b${normalized}\\b`,
-              'i',
-            );
-
-          const partialRegex =
-            new RegExp(
-              normalized,
-              'i',
-            );
-
-          const hasExact =
-            tokenRegex.test(
-              searchableText,
-            );
-
-          const hasPartial =
-            partialRegex.test(
-              searchableText,
-            );
-
-          if (
-            hasPartial &&
-            !hasExact
-          ) {
-            score -= 90000;
+            score -= 150000;
           }
         }
 
@@ -690,16 +653,33 @@ ${semanticCategories.join(' ')}
           semanticScore: score,
         };
       })
+      .filter(
+        (item) =>
+          item.semanticScore > 0,
+      )
       .sort(
         (a, b) =>
           (b.semanticScore ?? 0) -
           (a.semanticScore ?? 0),
       );
 
+    // ====================================================
+    // REMOVE SEMANTIC NOISE
+    // ====================================================
+
+    const filteredResults =
+      this.removeSemanticNoise(
+        reranked,
+        processed,
+      );
+
     this.logger.log(
-      `✅ Resultado reranqueado: ${reranked.length} itens`,
+      `✅ Resultado reranqueado: ${filteredResults.length} itens`,
     );
 
-    return reranked.slice(0, 20);
+    return filteredResults.slice(
+      0,
+      5,
+    );
   }
 }

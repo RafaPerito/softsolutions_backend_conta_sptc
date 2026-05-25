@@ -144,9 +144,6 @@ export class QueryUnderstandingService {
     const concepts =
       new Set<string>();
 
-    const relatedTerms =
-      new Set<string>();
-
     const boostTerms =
       new Set<string>();
 
@@ -166,33 +163,45 @@ export class QueryUnderstandingService {
         continue;
       }
 
-      knowledge.synonyms.forEach(
-        (s) =>
+      // ============================================
+      // LIMIT SYNONYMS
+      // ============================================
+
+      knowledge.synonyms
+        .slice(0, 3)
+        .forEach((s) =>
           synonyms.add(
             this.normalize(s),
           ),
-      );
+        );
 
-      knowledge.concepts.forEach(
-        (c) =>
+      // ============================================
+      // LIMIT CONCEPTS
+      // ============================================
+
+      knowledge.concepts
+        .slice(0, 2)
+        .forEach((c) =>
           concepts.add(
             this.normalize(c),
           ),
-      );
+        );
 
-      knowledge.relatedTerms.forEach(
-        (r) =>
-          relatedTerms.add(
-            this.normalize(r),
-          ),
-      );
+      // ============================================
+      // LIMIT BOOST TERMS
+      // ============================================
 
-      knowledge.boostTerms.forEach(
-        (b) =>
+      knowledge.boostTerms
+        .slice(0, 3)
+        .forEach((b) =>
           boostTerms.add(
             this.normalize(b),
           ),
-      );
+        );
+
+      // ============================================
+      // EXCLUSIONS
+      // ============================================
 
       knowledge.exclusions?.forEach(
         (e) =>
@@ -213,10 +222,6 @@ export class QueryUnderstandingService {
 
       concepts: [...concepts],
 
-      relatedTerms: [
-        ...relatedTerms,
-      ],
-
       boostTerms: [...boostTerms],
 
       exclusions: [...exclusions],
@@ -226,27 +231,32 @@ export class QueryUnderstandingService {
   }
 
   // ====================================================
-  // QUERY EXPANSION
+  // BUILD EXPANDED QUERY
   // ====================================================
 
   private buildExpandedQuery(
     normalizedText: string,
     semanticContext: any,
   ): string {
-    return [
+    const terms = [
       normalizedText,
 
       ...semanticContext.synonyms,
 
       ...semanticContext.concepts,
 
-      ...semanticContext.relatedTerms,
-
       ...semanticContext.boostTerms,
+    ];
 
-      ...semanticContext.categories,
+    return [
+      ...new Set(
+        terms
+          .filter(Boolean)
+          .map((t) =>
+            this.normalize(t),
+          ),
+      ),
     ]
-      .filter(Boolean)
       .join(' ')
       .trim();
   }
@@ -344,7 +354,7 @@ export class QueryUnderstandingService {
       );
 
     // ====================================================
-    // EMBEDDING
+    // EMBEDDINGS
     // ====================================================
 
     await this.initTransformers();
@@ -391,8 +401,6 @@ export class QueryUnderstandingService {
 
       ...semanticContext.concepts,
 
-      ...semanticContext.relatedTerms,
-
       ...semanticContext.boostTerms,
     ];
 
@@ -425,11 +433,6 @@ ${JSON.stringify(
       cleanedTokens,
     )}
 
-FILTERED TOKENS:
-${JSON.stringify(
-      classification.filteredTokens,
-    )}
-
 SYNONYMS:
 ${JSON.stringify(
       semanticContext.synonyms,
@@ -438,11 +441,6 @@ ${JSON.stringify(
 CONCEPTS:
 ${JSON.stringify(
       semanticContext.concepts,
-    )}
-
-RELATED TERMS:
-${JSON.stringify(
-      semanticContext.relatedTerms,
     )}
 
 BOOST TERMS:
@@ -490,9 +488,6 @@ ${expandedQuery}
 
       concepts:
         semanticContext.concepts,
-
-      relatedTerms:
-        semanticContext.relatedTerms,
 
       boostTerms:
         semanticContext.boostTerms,
