@@ -5,40 +5,30 @@ describe('MeilisearchIndexerService', () => {
   let service: MeilisearchIndexerService;
   let cursoRepository: { find: jest.Mock };
   let dataSource: { getRepository: jest.Mock };
-  let queryUnderstanding: { process: jest.Mock };
   let meilisearchService: { replaceAllDocuments: jest.Mock };
-  let loggerWarn: jest.SpyInstance;
   let loggerLog: jest.SpyInstance;
-  let consoleError: jest.SpyInstance;
 
   beforeEach(() => {
     cursoRepository = { find: jest.fn() };
     dataSource = {
       getRepository: jest.fn().mockReturnValue(cursoRepository),
     };
-    queryUnderstanding = {
-      process: jest.fn().mockResolvedValue({ embedding: [0.1, 0.2] }),
-    };
     meilisearchService = { replaceAllDocuments: jest.fn() };
 
     service = new MeilisearchIndexerService(
       dataSource as any,
-      queryUnderstanding as any,
+      {} as any,
       meilisearchService as any,
     );
 
-    loggerWarn = jest.spyOn((service as any).logger, 'warn').mockImplementation();
     loggerLog = jest.spyOn((service as any).logger, 'log').mockImplementation();
-    consoleError = jest.spyOn(console, 'error').mockImplementation();
   });
 
   afterEach(() => {
-    loggerWarn.mockRestore();
     loggerLog.mockRestore();
-    consoleError.mockRestore();
   });
 
-  it('deve indexar cursos e aulas com embeddings e campos esperados', async () => {
+  it('deve indexar cursos e aulas com campos esperados', async () => {
     cursoRepository.find.mockResolvedValue([
       {
         id: 1,
@@ -74,14 +64,15 @@ describe('MeilisearchIndexerService', () => {
     expect(cursoRepository.find).toHaveBeenCalledWith({
       relations: ['modulos', 'modulos.aulas'],
     });
-    expect(queryUnderstanding.process).toHaveBeenCalledTimes(2);
     expect(meilisearchService.replaceAllDocuments).toHaveBeenCalledWith(
       expect.arrayContaining([
         expect.objectContaining({
           id: 'curso-1',
           tipo: 'curso',
           titulo: 'Curso Node',
-          _vectors: { default: [0.1, 0.2] },
+          searchText: expect.stringContaining('curso node'),
+          semanticTags: expect.any(Array),
+          semanticConcepts: expect.any(Array),
         }),
         expect.objectContaining({
           id: 'aula-10',
@@ -90,15 +81,13 @@ describe('MeilisearchIndexerService', () => {
           modulo: 'API',
           videoUrl: 'video',
           tempoAula: 15,
-          _vectors: { default: [0.1, 0.2] },
+          searchText: expect.stringContaining('nest'),
         }),
       ]),
     );
     expect(result).toEqual({
       success: true,
       totalDocuments: 2,
-      cursosComEmbedding: 1,
-      aulasComEmbedding: 1,
     });
   });
 
@@ -118,7 +107,6 @@ describe('MeilisearchIndexerService', () => {
         modulos: undefined,
       },
     ]);
-    queryUnderstanding.process.mockResolvedValue({ embedding: undefined });
 
     const result = await service.reindexCursosEAulas();
 
@@ -140,38 +128,34 @@ describe('MeilisearchIndexerService', () => {
     ]);
     expect(result).toMatchObject({
       totalDocuments: 1,
-      cursosComEmbedding: 0,
-      aulasComEmbedding: 0,
     });
   });
 
-  it('deve continuar indexando quando gerar embedding de curso falhar', async () => {
+  it('deve ignorar modulos sem aulas', async () => {
     cursoRepository.find.mockResolvedValue([
       {
         id: 3,
-        nomeCurso: 'Curso Falha',
+        nomeCurso: 'Curso Sem Modulo',
         descricaoCurta: '',
         descricaoDetalhada: '',
-        modulos: [],
+        modulos: [{ nomeModulo: 'Vazio' }],
       },
     ]);
-    queryUnderstanding.process.mockRejectedValue(new Error('embedding error'));
 
     const result = await service.reindexCursosEAulas();
 
-    expect(loggerWarn).toHaveBeenCalledWith(expect.stringContaining('curso 3'));
-    expect(consoleError).toHaveBeenCalledWith(expect.any(Error));
     expect(meilisearchService.replaceAllDocuments).toHaveBeenCalledWith([
-      expect.not.objectContaining({ _vectors: expect.anything() }),
+      expect.objectContaining({
+        id: 'curso-3',
+      }),
     ]);
     expect(result).toMatchObject({
       success: true,
       totalDocuments: 1,
-      cursosComEmbedding: 0,
     });
   });
 
-  it('deve continuar indexando quando gerar embedding de aula falhar', async () => {
+  it('deve deduplicar aulas repetidas dentro do mesmo modulo', async () => {
     cursoRepository.find.mockResolvedValue([
       {
         id: 4,
@@ -184,7 +168,15 @@ describe('MeilisearchIndexerService', () => {
             aulas: [
               {
                 id: 40,
-                nomeAula: 'Aula Falha',
+                nomeAula: 'Aula Repetida',
+                descricaoConteudo: undefined,
+                status: undefined,
+                videoUrl: undefined,
+                tempoAula: undefined,
+              },
+              {
+                id: 40,
+                nomeAula: 'Aula Repetida',
                 descricaoConteudo: undefined,
                 status: undefined,
                 videoUrl: undefined,
@@ -195,14 +187,12 @@ describe('MeilisearchIndexerService', () => {
         ],
       },
     ]);
-    queryUnderstanding.process
-      .mockResolvedValueOnce({ embedding: [0.5] })
-      .mockRejectedValueOnce(new Error('aula embedding error'));
 
     const result = await service.reindexCursosEAulas();
+    const documents = meilisearchService.replaceAllDocuments.mock.calls[0][0];
 
-    expect(loggerWarn).toHaveBeenCalledWith(expect.stringContaining('aula 40'));
-    expect(meilisearchService.replaceAllDocuments).toHaveBeenCalledWith(
+    expect(documents).toHaveLength(2);
+    expect(documents).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           id: 'aula-40',
@@ -221,8 +211,6 @@ describe('MeilisearchIndexerService', () => {
     );
     expect(result).toMatchObject({
       totalDocuments: 2,
-      cursosComEmbedding: 1,
-      aulasComEmbedding: 0,
     });
   });
 
@@ -235,8 +223,6 @@ describe('MeilisearchIndexerService', () => {
     expect(result).toEqual({
       success: true,
       totalDocuments: 0,
-      cursosComEmbedding: 0,
-      aulasComEmbedding: 0,
     });
   });
 });

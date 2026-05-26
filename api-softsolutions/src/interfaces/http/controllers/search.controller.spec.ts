@@ -1,13 +1,11 @@
 import { SearchController } from './search.controller';
-import { SearchTextUseCase } from '../../../application/use-cases/search/search-text.use-case';
-import { SearchVoiceUseCase } from '../../../application/use-cases/search/search-voice.use-case';
-import { MeilisearchIndexerService } from '../../../infrastructure/search/meilisearch/meilisearch-indexer.service';
 
 describe('SearchController', () => {
   let controller: SearchController;
   let mockSearchTextUseCase: any;
   let mockSearchVoiceUseCase: any;
   let mockMeilisearchIndexerService: any;
+  let mockMeilisearchService: any;
 
   beforeEach(() => {
     mockSearchTextUseCase = {
@@ -19,27 +17,19 @@ describe('SearchController', () => {
     mockMeilisearchIndexerService = {
       reindexCursosEAulas: jest.fn().mockResolvedValue(undefined),
     };
+    mockMeilisearchService = {
+      getSuggestions: jest.fn().mockResolvedValue([]),
+    };
     controller = new SearchController(
       mockSearchTextUseCase,
       mockSearchVoiceUseCase,
       mockMeilisearchIndexerService,
+      mockMeilisearchService,
     );
   });
 
   it('deve instanciar a classe', () => {
     expect(controller).toBeDefined();
-  });
-
-  it('deve ter método textSearch definido', () => {
-    expect(typeof controller.textSearch).toBe('function');
-  });
-
-  it('deve ter método voiceSearch definido', () => {
-    expect(typeof controller.voiceSearch).toBe('function');
-  });
-
-  it('deve ter método reindex definido', () => {
-    expect(typeof controller.reindex).toBe('function');
   });
 
   it('deve retornar resultados de busca textual', async () => {
@@ -49,8 +39,27 @@ describe('SearchController', () => {
     const result = await controller.textSearch({ q: 'python' } as any);
 
     expect(mockSearchTextUseCase.execute).toHaveBeenCalledWith('python');
-    expect(result).toHaveProperty('results');
-    expect(result.results).toEqual(mockResults);
+    expect(result).toEqual({
+      results: mockResults,
+      total: 1,
+      query: 'python',
+    });
+  });
+
+  it('deve retornar sugestoes de autocomplete', async () => {
+    mockMeilisearchService.getSuggestions.mockResolvedValueOnce(['Node']);
+
+    const result = await controller.autocomplete('no');
+
+    expect(mockMeilisearchService.getSuggestions).toHaveBeenCalledWith('no');
+    expect(result).toEqual({ suggestions: ['Node'] });
+  });
+
+  it('deve retornar sugestoes vazias quando autocomplete vier vazio', async () => {
+    const result = await controller.autocomplete('   ');
+
+    expect(mockMeilisearchService.getSuggestions).not.toHaveBeenCalled();
+    expect(result).toEqual({ suggestions: [] });
   });
 
   it('deve retornar resultados de busca por voz', async () => {
@@ -72,14 +81,18 @@ describe('SearchController', () => {
 
     const result = await controller.voiceSearch({ text: 'buscar curso' } as any);
 
-    expect(mockSearchVoiceUseCase.execute).toHaveBeenCalledWith({ text: 'buscar curso' });
+    expect(mockSearchVoiceUseCase.execute).toHaveBeenCalledWith({
+      text: 'buscar curso',
+    });
     expect(result).toEqual(mockResult);
   });
 
-  it('deve executar reindexação', async () => {
+  it('deve executar reindexacao', async () => {
     const result = await controller.reindex();
 
-    expect(mockMeilisearchIndexerService.reindexCursosEAulas).toHaveBeenCalled();
+    expect(
+      mockMeilisearchIndexerService.reindexCursosEAulas,
+    ).toHaveBeenCalled();
     expect(result).toHaveProperty('message');
   });
 });

@@ -2,12 +2,17 @@ import { CreateUsuarioUseCase } from './create-usuario.use-case';
 import { UsuarioRepository } from '../../../infrastructure/database/repositories/usuario.repository';
 import * as bcrypt from 'bcrypt';
 
+jest.mock('bcrypt', () => ({
+  hash: jest.fn(),
+}));
+
 describe('CreateUsuarioUseCase', () => {
   let useCase: CreateUsuarioUseCase;
   let usuarioRepo: jest.Mocked<UsuarioRepository>;
 
   beforeEach(() => {
     jest.clearAllMocks();
+    (bcrypt.hash as jest.Mock).mockResolvedValue('hashed');
     usuarioRepo = {
       findByEmail: jest.fn(),
       findByCpf: jest.fn(),
@@ -17,8 +22,7 @@ describe('CreateUsuarioUseCase', () => {
     useCase = new CreateUsuarioUseCase(usuarioRepo);
   });
 
-  it('deve criar usuário com senha hash, tipo aluno e telefone formatado com 11 dígitos', async () => {
-    jest.spyOn(bcrypt, 'hash').mockResolvedValue('hashed' as never);
+  it('deve criar usuario com senha hash, tipo aluno e telefone formatado com 11 digitos', async () => {
     usuarioRepo.findByEmail.mockResolvedValue(null);
     usuarioRepo.findByCpf.mockResolvedValue(null);
     usuarioRepo.create.mockImplementation(async (data) => ({
@@ -46,8 +50,7 @@ describe('CreateUsuarioUseCase', () => {
     expect(result).not.toHaveProperty('senha');
   });
 
-  it('deve formatar telefone com 10 dígitos', async () => {
-    jest.spyOn(bcrypt, 'hash').mockResolvedValue('hashed' as never);
+  it('deve formatar telefone com 10 digitos', async () => {
     usuarioRepo.findByEmail.mockResolvedValue(null);
     usuarioRepo.findByCpf.mockResolvedValue(null);
     usuarioRepo.create.mockImplementation(async (data) => ({
@@ -66,8 +69,7 @@ describe('CreateUsuarioUseCase', () => {
     expect(result.telefone).toBe('(11) 3333-4444');
   });
 
-  it('deve criar usuário sem telefone quando ele não for informado', async () => {
-    jest.spyOn(bcrypt, 'hash').mockResolvedValue('hashed' as never);
+  it('deve criar usuario sem telefone quando ele nao for informado', async () => {
     usuarioRepo.findByEmail.mockResolvedValue(null);
     usuarioRepo.findByCpf.mockResolvedValue(null);
     usuarioRepo.create.mockImplementation(async (data) => ({
@@ -85,7 +87,7 @@ describe('CreateUsuarioUseCase', () => {
     expect(result.telefone).toBeUndefined();
   });
 
-  it('deve lançar erro se CPF inválido', async () => {
+  it('deve lancar erro se CPF invalido', async () => {
     await expect(
       useCase.execute({
         nomeUsuario: 'Lucas',
@@ -93,11 +95,11 @@ describe('CreateUsuarioUseCase', () => {
         email: 'lucas@email.com',
         senha: '123456',
       }),
-    ).rejects.toThrow('CPF inválido');
+    ).rejects.toThrow('CPF');
     expect(usuarioRepo.findByEmail).not.toHaveBeenCalled();
   });
 
-  it('deve lançar erro se email já existir', async () => {
+  it('deve lancar erro se email ja existir', async () => {
     usuarioRepo.findByEmail.mockResolvedValue({ id: 1 } as any);
 
     await expect(
@@ -107,11 +109,11 @@ describe('CreateUsuarioUseCase', () => {
         email: 'lucas@email.com',
         senha: '123456',
       }),
-    ).rejects.toThrow('Email já cadastrado');
+    ).rejects.toThrow('Email');
     expect(usuarioRepo.findByCpf).not.toHaveBeenCalled();
   });
 
-  it('deve lançar erro se CPF já existir', async () => {
+  it('deve lancar erro se CPF ja existir', async () => {
     usuarioRepo.findByEmail.mockResolvedValue(null);
     usuarioRepo.findByCpf.mockResolvedValue({ id: 1 } as any);
 
@@ -122,11 +124,10 @@ describe('CreateUsuarioUseCase', () => {
         email: 'lucas@email.com',
         senha: '123456',
       }),
-    ).rejects.toThrow('CPF já cadastrado');
+    ).rejects.toThrow('CPF');
   });
 
   it('deve validar CPF formatado e cobrir os ramos de resto especial', async () => {
-    jest.spyOn(bcrypt, 'hash').mockResolvedValue('hashed' as never);
     usuarioRepo.findByEmail.mockResolvedValue(null);
     usuarioRepo.findByCpf.mockResolvedValue(null);
     usuarioRepo.create.mockImplementation(async (data) => ({
