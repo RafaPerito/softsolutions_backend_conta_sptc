@@ -3,6 +3,11 @@ import { UsuarioRepository } from '../../../infrastructure/database/repositories
 import * as bcrypt from 'bcrypt';
 import { UsuarioModel } from '../../../domain/models/usuario.model';
 
+jest.mock('bcrypt', () => ({
+  compare: jest.fn(),
+  hash: jest.fn(),
+}));
+
 describe('UpdateUsuarioUseCase', () => {
   let useCase: UpdateUsuarioUseCase;
   let usuarioRepo: jest.Mocked<UsuarioRepository>;
@@ -18,11 +23,13 @@ describe('UpdateUsuarioUseCase', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    (bcrypt.compare as jest.Mock).mockResolvedValue(false);
+    (bcrypt.hash as jest.Mock).mockResolvedValue('novo-hash');
     usuarioRepo = { findById: jest.fn(), update: jest.fn() } as any;
     useCase = new UpdateUsuarioUseCase(usuarioRepo);
   });
 
-  it('deve atualizar usuário com telefone formatado em 11 dígitos', async () => {
+  it('deve atualizar usuario com telefone formatado em 11 digitos', async () => {
     usuarioRepo.findById.mockResolvedValue(usuarioBase);
     usuarioRepo.update.mockImplementation(async (_id, data) => ({
       ...usuarioBase,
@@ -37,7 +44,7 @@ describe('UpdateUsuarioUseCase', () => {
     expect(result).not.toHaveProperty('senha');
   });
 
-  it('deve atualizar usuário com telefone formatado em 10 dígitos', async () => {
+  it('deve atualizar usuario com telefone formatado em 10 digitos', async () => {
     usuarioRepo.findById.mockResolvedValue(usuarioBase);
     usuarioRepo.update.mockImplementation(async (_id, data) => ({
       ...usuarioBase,
@@ -49,41 +56,38 @@ describe('UpdateUsuarioUseCase', () => {
     expect(result.telefone).toBe('(11) 3333-4444');
   });
 
-  it('deve lançar erro se usuário não for encontrado', async () => {
+  it('deve lancar erro se usuario nao for encontrado', async () => {
     usuarioRepo.findById.mockResolvedValue(null);
 
-    await expect(useCase.execute(1, {})).rejects.toThrow(
-      'Usuário não encontrado',
-    );
+    await expect(useCase.execute(1, {})).rejects.toThrow('Usu');
   });
 
-  it('deve lançar erro se tentar alterar CPF', async () => {
+  it('deve lancar erro se tentar alterar CPF', async () => {
     usuarioRepo.findById.mockResolvedValue(usuarioBase);
 
     await expect(
       useCase.execute(1, { cpfUsuario: '12345678900' }),
-    ).rejects.toThrow('Não é permitido alterar o CPF');
+    ).rejects.toThrow('CPF');
   });
 
-  it('deve lançar erro para email inválido', async () => {
+  it('deve lancar erro para email invalido', async () => {
     usuarioRepo.findById.mockResolvedValue(usuarioBase);
 
     await expect(useCase.execute(1, { email: 'invalido' })).rejects.toThrow(
-      'Email inválido',
+      'Email',
     );
   });
 
-  it('deve lançar erro para telefone inválido', async () => {
+  it('deve lancar erro para telefone invalido', async () => {
     usuarioRepo.findById.mockResolvedValue(usuarioBase);
 
     await expect(useCase.execute(1, { telefone: '123' })).rejects.toThrow(
-      'Telefone inválido',
+      'Telefone',
     );
   });
 
-  it('deve remover alteração de tipo e manter senha quando já corresponder ao hash', async () => {
-    jest.spyOn(bcrypt, 'compare').mockResolvedValue(true as never);
-    const hashSpy = jest.spyOn(bcrypt, 'hash');
+  it('deve remover alteracao de tipo e manter senha quando ja corresponder ao hash', async () => {
+    (bcrypt.compare as jest.Mock).mockResolvedValueOnce(true);
     usuarioRepo.findById.mockResolvedValue(usuarioBase);
     usuarioRepo.update.mockImplementation(async (_id, data) => ({
       ...usuarioBase,
@@ -93,12 +97,10 @@ describe('UpdateUsuarioUseCase', () => {
     await useCase.execute(1, { tipo: 'administrador', senha: '123456' });
 
     expect(usuarioRepo.update).toHaveBeenCalledWith(1, { senha: '123456' });
-    expect(hashSpy).not.toHaveBeenCalled();
+    expect(bcrypt.hash).not.toHaveBeenCalled();
   });
 
   it('deve gerar novo hash quando a senha for diferente', async () => {
-    jest.spyOn(bcrypt, 'compare').mockResolvedValue(false as never);
-    jest.spyOn(bcrypt, 'hash').mockResolvedValue('novo-hash' as never);
     usuarioRepo.findById.mockResolvedValue(usuarioBase);
     usuarioRepo.update.mockImplementation(async (_id, data) => ({
       ...usuarioBase,

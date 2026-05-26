@@ -3,7 +3,7 @@ import { InscricaoRepository } from 'src/infrastructure/database/repositories/in
 import { ProgressoAulaRepository } from 'src/infrastructure/database/repositories/progresso-aula.repository';
 import { CertificadoRepository } from 'src/infrastructure/database/repositories/certificado.repository';
 import { v4 as uuidv4 } from 'uuid';
-import * as PDFDocument from 'pdfkit';
+import PDFDocument from 'pdfkit';
 import { InscricaoModel } from 'src/domain/models/inscricao.model';
 import { UsuarioModel } from 'src/domain/models/usuario.model';
 import { CursoModel } from 'src/domain/models/curso.model';

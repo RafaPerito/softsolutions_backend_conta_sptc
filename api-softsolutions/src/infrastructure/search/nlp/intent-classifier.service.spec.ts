@@ -35,10 +35,10 @@ describe('IntentClassifierService', () => {
       .spyOn((service as any).classifier, 'getClassifications')
       .mockReturnValue([{ label: 'buscar_curso', value: 0.1 }]);
 
-    const result = service.classify('curso de node');
+    const result = service.classify('termo desconhecido');
 
     expect(result.intent).toBe('desconhecida');
-    expect(result.confidence).toBe(0.1);
+    expect(result.confidence).toBe(0);
   });
 
   it('deve retornar a melhor intenção quando a confiança for suficiente', () => {

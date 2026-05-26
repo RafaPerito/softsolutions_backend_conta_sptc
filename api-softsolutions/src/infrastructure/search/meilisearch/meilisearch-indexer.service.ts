@@ -1,198 +1,499 @@
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+} from '@nestjs/common';
+
 import { DataSource } from 'typeorm';
 
 import { QueryUnderstandingService } from '../nlp/query-understanding.service';
+
 import { MeilisearchService } from './meilisearch.service';
+
+import {
+  SEMANTIC_KNOWLEDGE,
+} from '../nlp/semantic-knowledge.dictionary';
 
 import { CursoEntity } from '../../database/entities/curso.entity';
 
 @Injectable()
 export class MeilisearchIndexerService {
-  private readonly logger = new Logger(MeilisearchIndexerService.name);
+  private readonly logger = new Logger(
+    MeilisearchIndexerService.name,
+  );
 
   constructor(
     private readonly dataSource: DataSource,
+
     private readonly queryUnderstanding: QueryUnderstandingService,
+
     private readonly meiliService: MeilisearchService,
   ) {}
 
+  // ====================================================
+  // NORMALIZE
+  // ====================================================
+
+  private normalize(
+    text: string,
+  ): string {
+    return (text ?? '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^\w\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  // ====================================================
+  // BUILD SEARCH TEXT
+  // ====================================================
+
+  private buildSearchText(
+    values: string[],
+  ): string {
+    return values
+      .filter(Boolean)
+      .map((v) => this.normalize(v))
+      .join(' ')
+      .trim();
+  }
+
+  // ====================================================
+  // DETECT SEMANTIC DATA
+  // ====================================================
+
+  private detectSemanticData(
+    text: string,
+  ) {
+    const normalized =
+      this.normalize(text);
+
+    const semanticTags =
+      new Set<string>();
+
+    const semanticConcepts =
+      new Set<string>();
+
+    const semanticCategories =
+      new Set<string>();
+
+    for (const [key, knowledge] of Object.entries(
+      SEMANTIC_KNOWLEDGE,
+    )) {
+      const terms = [
+        key,
+
+        ...knowledge.synonyms,
+
+        ...(knowledge.relatedTerms ?? []),
+      ];
+
+      const matched =
+        terms.some((term) =>
+          normalized.includes(
+            this.normalize(term),
+          ),
+        );
+
+      if (!matched) {
+        continue;
+      }
+
+      // ====================================================
+      // TAG PRINCIPAL
+      // ====================================================
+
+      semanticTags.add(
+        this.normalize(key),
+      );
+
+      // ====================================================
+      // CONCEPTS
+      // ====================================================
+
+      knowledge.concepts.forEach(
+        (concept) =>
+          semanticConcepts.add(
+            this.normalize(
+              concept,
+            ),
+          ),
+      );
+
+      // ====================================================
+      // CATEGORY
+      // ====================================================
+
+      semanticCategories.add(
+        this.normalize(
+          knowledge.category,
+        ),
+      );
+    }
+
+    return {
+      semanticTags: [
+        ...semanticTags,
+      ],
+
+      semanticConcepts: [
+        ...semanticConcepts,
+      ],
+
+      semanticCategories: [
+        ...semanticCategories,
+      ],
+    };
+  }
+
+  // ====================================================
+  // REINDEX
+  // ====================================================
+
   async reindexCursosEAulas() {
-    this.logger.log('🚀 Iniciando reindexação semântica...');
+    this.logger.log(
+      '🚀 Iniciando reindexação...',
+    );
 
-    const cursos = await this.loadCursosComAulas();
+    const cursos =
+      await this.loadCursosComAulas();
 
-    const documents: any[] = [];
+    this.logger.log(`
+================ DATABASE DEBUG ================
 
-    let cursosComEmbedding = 0;
-    let aulasComEmbedding = 0;
+TOTAL CURSOS:
+${cursos.length}
+`);
+
+    const documentsMap =
+      new Map<string, any>();
+
+    // ====================================================
+    // CURSOS
+    // ====================================================
 
     for (const curso of cursos) {
       this.logger.log(
-        `📚 Processando curso ${curso.id} - ${curso.nomeCurso}`,
+        `📚 Curso ${curso.id} - ${curso.nomeCurso}`,
       );
 
-      const cursoDoc: any = {
+      const semanticData =
+        this.detectSemanticData(`
+${curso.nomeCurso}
+
+${curso.descricaoCurta}
+
+${curso.descricaoDetalhada}
+
+${curso.categoria}
+`);
+
+      const cursoSearchText =
+        this.buildSearchText([
+          curso.nomeCurso,
+
+          curso.descricaoCurta,
+
+          curso.descricaoDetalhada,
+
+          curso.professor,
+
+          curso.categoria,
+
+          ...semanticData.semanticTags,
+
+          ...semanticData.semanticConcepts,
+        ]);
+
+      const cursoDoc = {
         id: `curso-${curso.id}`,
+
         tipo: 'curso',
 
         cursoId: curso.id,
+
         aulaId: null,
 
-        titulo: curso.nomeCurso,
-        descricao: curso.descricaoCurta || '',
-        descricaoDetalhada: curso.descricaoDetalhada || '',
+        titulo:
+          curso.nomeCurso,
 
-        categoria: curso.categoria || '',
-        conteudo: curso.descricaoDetalhada || '',
+        descricao:
+          curso.descricaoCurta ||
+          '',
 
-        professor: curso.professor || '',
-        status: curso.status || 'ativo',
+        descricaoDetalhada:
+          curso.descricaoDetalhada ||
+          '',
 
-        avaliacao: curso.avaliacao || 0,
+        categoria:
+          curso.categoria || '',
 
-        imagemCurso: curso.imagemCurso || null,
-        tempoCurso: curso.tempoCurso || null,
+        conteudo:
+          curso.descricaoDetalhada ||
+          '',
+
+        professor:
+          curso.professor || '',
+
+        status:
+          curso.status ||
+          'ativo',
+
+        avaliacao:
+          curso.avaliacao ||
+          0,
+
+        imagemCurso:
+          curso.imagemCurso ||
+          null,
+
+        tempoCurso:
+          curso.tempoCurso ||
+          null,
 
         modulo: null,
-        curso: curso.nomeCurso,
+
+        curso:
+          curso.nomeCurso,
 
         videoUrl: null,
+
+        searchText:
+          cursoSearchText,
+
+        semanticTags:
+          semanticData.semanticTags,
+
+        semanticConcepts:
+          semanticData.semanticConcepts,
+
+        semanticCategories:
+          semanticData.semanticCategories,
       };
 
-      try {
-        const textoCurso = `
-          ${curso.nomeCurso}
-          ${curso.descricaoCurta || ''}
-          ${curso.descricaoDetalhada || ''}
-        `;
+      documentsMap.set(
+        cursoDoc.id,
+        cursoDoc,
+      );
 
-        const processed =
-          await this.queryUnderstanding.process(textoCurso);
+      // ====================================================
+      // MODULOS / AULAS
+      // ====================================================
 
-        if (processed.embedding?.length) {
-          cursoDoc._vectors = {
-            default: processed.embedding,
-          };
-
-          cursosComEmbedding++;
-
-          this.logger.log(
-            `✅ Embedding do curso ${curso.id} gerado.`,
-          );
-        }
-      } catch (error: any) {
-        this.logger.warn(
-          `❌ Erro embedding curso ${curso.id}`,
-        );
-
-        console.error(error);
-      }
-
-      documents.push(cursoDoc);
-
-      if (curso.modulos && Array.isArray(curso.modulos)) {
+      if (
+        curso.modulos &&
+        Array.isArray(
+          curso.modulos,
+        )
+      ) {
         for (const modulo of curso.modulos) {
-          const aulas = (modulo as any).aulas || [];
+          const aulas =
+            (modulo as any)
+              .aulas || [];
+
+          const aulasUnicas =
+            new Map<
+              number,
+              any
+            >();
 
           for (const aula of aulas) {
+            aulasUnicas.set(
+              aula.id,
+              aula,
+            );
+          }
+
+          for (const aula of aulasUnicas.values()) {
             this.logger.log(
-              `🎥 Processando aula ${aula.id} - ${aula.nomeAula}`,
+              `🎥 Aula ${aula.id} - ${aula.nomeAula}`,
             );
 
-            const aulaDoc: any = {
+            const semanticData =
+              this.detectSemanticData(`
+${curso.nomeCurso}
+
+${curso.descricaoDetalhada}
+
+${modulo.nomeModulo}
+
+${aula.nomeAula}
+
+${aula.descricaoConteudo}
+`);
+
+            const aulaSearchText =
+              this.buildSearchText([
+                aula.nomeAula,
+
+                aula.descricaoConteudo,
+
+                curso.nomeCurso,
+
+                curso.professor,
+
+                curso.categoria,
+
+                modulo.nomeModulo,
+
+                ...semanticData.semanticTags,
+
+                ...semanticData.semanticConcepts,
+              ]);
+
+            const aulaDoc = {
               id: `aula-${aula.id}`,
+
               tipo: 'aula',
 
-              cursoId: curso.id,
-              aulaId: aula.id,
+              cursoId:
+                curso.id,
 
-              titulo: aula.nomeAula,
+              aulaId:
+                aula.id,
 
-              descricao: aula.descricaoConteudo || '',
+              titulo:
+                aula.nomeAula,
+
+              descricao:
+                aula.descricaoConteudo ||
+                '',
+
               descricaoDetalhada:
-                aula.descricaoConteudo || '',
+                aula.descricaoConteudo ||
+                '',
 
-              categoria: curso.categoria || '',
-              conteudo: aula.descricaoConteudo || '',
+              categoria:
+                curso.categoria ||
+                '',
 
-              professor: curso.professor || '',
+              conteudo:
+                aula.descricaoConteudo ||
+                '',
 
-              status: (aula as any).status || 'ativo',
+              professor:
+                curso.professor ||
+                '',
 
-              avaliacao: curso.avaliacao || 0,
+              status:
+                (aula as any)
+                  .status ||
+                'ativo',
 
-              imagemCurso: curso.imagemCurso || null,
-              tempoCurso: curso.tempoCurso || null,
+              avaliacao:
+                curso.avaliacao ||
+                0,
 
-              modulo: modulo.nomeModulo || '',
-              curso: curso.nomeCurso,
+              imagemCurso:
+                curso.imagemCurso ||
+                null,
 
-              videoUrl: aula.videoUrl || null,
-              tempoAula: aula.tempoAula || null,
+              tempoCurso:
+                curso.tempoCurso ||
+                null,
+
+              modulo:
+                modulo.nomeModulo ||
+                '',
+
+              curso:
+                curso.nomeCurso,
+
+              videoUrl:
+                aula.videoUrl ||
+                null,
+
+              tempoAula:
+                aula.tempoAula ||
+                null,
+
+              searchText:
+                aulaSearchText,
+
+              semanticTags:
+                semanticData.semanticTags,
+
+              semanticConcepts:
+                semanticData.semanticConcepts,
+
+              semanticCategories:
+                semanticData.semanticCategories,
             };
 
-            try {
-              const textoAula = `
-                ${aula.nomeAula}
-                ${aula.descricaoConteudo || ''}
-              `;
-
-              const processed =
-                await this.queryUnderstanding.process(textoAula);
-
-              if (processed.embedding?.length) {
-                aulaDoc._vectors = {
-                  default: processed.embedding,
-                };
-
-                aulasComEmbedding++;
-
-                this.logger.log(
-                  `✅ Embedding da aula ${aula.id} gerado.`,
-                );
-              }
-            } catch (error: any) {
-              this.logger.warn(
-                `❌ Erro embedding aula ${aula.id}`,
-              );
-
-              console.error(error);
-            }
-
-            documents.push(aulaDoc);
+            documentsMap.set(
+              aulaDoc.id,
+              aulaDoc,
+            );
           }
         }
       }
     }
 
-    this.logger.log('📦 Enviando documentos para o Meilisearch...');
+    // ====================================================
+    // FINAL ARRAY
+    // ====================================================
 
-    await this.meiliService.replaceAllDocuments(documents);
+    const documents =
+      Array.from(
+        documentsMap.values(),
+      );
+
+    this.logger.log(`
+================ DOCUMENT DEBUG ================
+
+TOTAL DOCUMENTS:
+${documents.length}
+
+PRIMEIRO DOCUMENTO:
+${JSON.stringify(
+  documents[0],
+  null,
+  2,
+)}
+`);
+
+    // ====================================================
+    // SEND TO MEILI
+    // ====================================================
+
+    this.logger.log(
+      '📦 Enviando documentos...',
+    );
+
+    await this.meiliService.replaceAllDocuments(
+      documents,
+    );
 
     this.logger.log(
       `✅ Reindexação concluída. ${documents.length} documentos enviados.`,
     );
 
-    this.logger.log(
-      `📊 Resumo:
-      Cursos com embedding: ${cursosComEmbedding}
-      Aulas com embedding: ${aulasComEmbedding}
-      Total documentos: ${documents.length}`,
-    );
-
     return {
       success: true,
-      totalDocuments: documents.length,
-      cursosComEmbedding,
-      aulasComEmbedding,
+
+      totalDocuments:
+        documents.length,
     };
   }
 
-  private async loadCursosComAulas(): Promise<CursoEntity[]> {
-    const repo = this.dataSource.getRepository(CursoEntity);
+  // ====================================================
+  // LOAD DATABASE
+  // ====================================================
+
+  private async loadCursosComAulas(): Promise<
+    CursoEntity[]
+  > {
+    const repo =
+      this.dataSource.getRepository(
+        CursoEntity,
+      );
 
     return repo.find({
-      relations: ['modulos', 'modulos.aulas'],
+      relations: [
+        'modulos',
+        'modulos.aulas',
+      ],
     });
   }
 }

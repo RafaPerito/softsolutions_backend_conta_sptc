@@ -1,47 +1,109 @@
 import { AulaEntity } from '../infrastructure/database/entities/aula.entity';
+
 import { ModuloEntity } from '../infrastructure/database/entities/modulo.entity';
+
 import { seedDataSource } from './seed-data-source';
 
 export async function runSeedAulas() {
-  const aulaRepo = seedDataSource.getRepository(AulaEntity);
-  const moduloRepo = seedDataSource.getRepository(ModuloEntity);
+  const aulaRepo =
+    seedDataSource.getRepository(
+      AulaEntity,
+    );
 
-  const modulos = await moduloRepo.find();
+  const moduloRepo =
+    seedDataSource.getRepository(
+      ModuloEntity,
+    );
 
-  const aulasParaInserir: Partial<AulaEntity>[] = [];
+  // ====================================================
+  // EVITA DUPLICAÇÃO
+  // ====================================================
+
+  const total =
+    await aulaRepo.count();
+
+  if (total > 0) {
+    console.log(
+      'Aulas já existem. Seed ignorado.',
+    );
+
+    return;
+  }
+
+  const modulos =
+    await moduloRepo.find();
+
+  const aulasParaInserir:
+    Partial<AulaEntity>[] = [];
 
   for (const modulo of modulos) {
-    const aulas: Partial<AulaEntity>[] = [
+    const aulas:
+      Partial<AulaEntity>[] = [
       {
         nomeAula: `Introdução ao módulo: ${modulo.nomeModulo}`,
+
         tempoAula: 5,
-        videoUrl: 'https://www.youtube.com/embed/QGBkp-pvTi4?si=kwPdbIrkOMtf1ZXs',
-        materialApoio: ['https://softsolutions.com.br/material/introducao.pdf'],
-        descricaoConteudo: 'Apresentação dos objetivos e visão geral do módulo.',
+
+        videoUrl:
+          'https://www.youtube.com/embed/QGBkp-pvTi4?si=kwPdbIrkOMtf1ZXs',
+
+        materialApoio: [
+          'https://softsolutions.com.br/material/introducao.pdf',
+        ],
+
+        descricaoConteudo:
+          'Apresentação dos objetivos e visão geral do módulo.',
+
         modulo,
       },
+
       {
         nomeAula: `Conceitos principais de ${modulo.nomeModulo}`,
+
         tempoAula: 15,
-        videoUrl: 'https://www.youtube.com/embed/QGBkp-pvTi4?si=kwPdbIrkOMtf1ZXs',
-        materialApoio: ['https://softsolutions.com.br/material/conceitos.pdf'],
-        descricaoConteudo: 'Exposição dos conceitos fundamentais e exemplos práticos.',
+
+        videoUrl:
+          'https://www.youtube.com/embed/QGBkp-pvTi4?si=kwPdbIrkOMtf1ZXs',
+
+        materialApoio: [
+          'https://softsolutions.com.br/material/conceitos.pdf',
+        ],
+
+        descricaoConteudo:
+          'Exposição dos conceitos fundamentais e exemplos práticos.',
+
         modulo,
       },
+
       {
         nomeAula: `Práticas e exercícios: ${modulo.nomeModulo}`,
+
         tempoAula: 10,
-        videoUrl: 'https://www.youtube.com/embed/QGBkp-pvTi4?si=kwPdbIrkOMtf1ZXs',
-        materialApoio: ['https://softsolutions.com.br/material/praticas.pdf'],
-        descricaoConteudo: 'Atividades e aplicações práticas para consolidar o conhecimento.',
+
+        videoUrl:
+          'https://www.youtube.com/embed/QGBkp-pvTi4?si=kwPdbIrkOMtf1ZXs',
+
+        materialApoio: [
+          'https://softsolutions.com.br/material/praticas.pdf',
+        ],
+
+        descricaoConteudo:
+          'Atividades e aplicações práticas para consolidar o conhecimento.',
+
         modulo,
       },
     ];
 
-    aulasParaInserir.push(...aulas);
+    aulasParaInserir.push(
+      ...aulas,
+    );
   }
 
-  await aulaRepo.save(aulasParaInserir);
+  await aulaRepo.save(
+    aulasParaInserir,
+  );
 
-  console.log('Aulas para todos os módulos inseridas com sucesso!');
+  console.log(
+    'Aulas inseridas com sucesso!',
+  );
 }
