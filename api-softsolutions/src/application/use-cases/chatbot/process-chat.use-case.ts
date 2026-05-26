@@ -10,6 +10,8 @@ import { ChatRequestDto } from '../../../interfaces/http/dtos/requests/chat-requ
 
 import { ChatResponseDto } from '../../../interfaces/http/dtos/responses/chat-response.dto';
 
+import { PLATFORM_NAVIGATION } from '../../../infrastructure/chatbot/navigation/platform-navigation.dictionary';
+
 @Injectable()
 export class ProcessChatUseCase {
   constructor(
@@ -19,6 +21,10 @@ export class ProcessChatUseCase {
 
     private readonly openaiService: OpenaiService,
   ) {}
+
+  // ====================================================
+  // CONTEXT
+  // ====================================================
 
   private buildContext(
     results: any[],
@@ -56,6 +62,10 @@ ${item.professor ?? 'N/A'}
       .join('\n');
   }
 
+  // ====================================================
+  // SUGGESTIONS
+  // ====================================================
+
   private generateSuggestions(
     results: any[],
   ): string[] {
@@ -72,11 +82,116 @@ ${item.professor ?? 'N/A'}
     ].slice(0, 5);
   }
 
+  // ====================================================
+  // NORMALIZE
+  // ====================================================
+
+  private normalize(
+    value: string,
+  ): string {
+    return value
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim();
+  }
+
+  // ====================================================
+  // PLATFORM NAVIGATION
+  // ====================================================
+
+  private detectNavigation(
+    message: string,
+  ) {
+    const normalized =
+      this.normalize(message);
+
+    let bestMatch: any = null;
+
+    let bestScore = 0;
+
+    for (const item of PLATFORM_NAVIGATION) {
+      let score = 0;
+
+      for (const keyword of item.keywords) {
+        const normalizedKeyword =
+          this.normalize(keyword);
+
+        // ====================================================
+        // EXACT MATCH
+        // ====================================================
+
+        if (
+          normalized ===
+          normalizedKeyword
+        ) {
+          score += 100;
+        }
+
+        // ====================================================
+        // CONTAINS
+        // ====================================================
+
+        if (
+          normalized.includes(
+            normalizedKeyword,
+          )
+        ) {
+          score += 25;
+        }
+
+        // ====================================================
+        // WORD MATCH
+        // ====================================================
+
+        const words =
+          normalized.split(' ');
+
+        if (
+          words.includes(
+            normalizedKeyword,
+          )
+        ) {
+          score += 40;
+        }
+      }
+
+      if (score > bestScore) {
+        bestScore = score;
+
+        bestMatch = item;
+      }
+    }
+
+    // ====================================================
+    // MINIMUM CONFIDENCE
+    // ====================================================
+
+    if (bestScore >= 40) {
+      return bestMatch;
+    }
+
+    return null;
+  }
+
+  // ====================================================
+  // EXECUTE
+  // ====================================================
+
   async execute(
     dto: ChatRequestDto,
   ): Promise<ChatResponseDto> {
     const processed =
       await this.queryUnderstandingService.process(
+        dto.message,
+      );
+
+    // ====================================================
+    // NAVIGATION DETECTION
+    // ====================================================
+
+    const navigationMatch =
+      this.detectNavigation(
         dto.message,
       );
 
@@ -111,6 +226,10 @@ ${item.professor ?? 'N/A'}
         requiresHumanSupport: false,
 
         relatedCourses: [],
+
+        navigation:
+          navigationMatch?.navigation ??
+          [],
 
         semanticContext: {
           intent:
@@ -189,6 +308,10 @@ Atualmente nossa plataforma é focada em desenvolvimento web, backend, frontend 
 
         relatedCourses: [],
 
+        navigation:
+          navigationMatch?.navigation ??
+          [],
+
         semanticContext: {
           intent:
             processed.intent,
@@ -204,6 +327,10 @@ Atualmente nossa plataforma é focada em desenvolvimento web, backend, frontend 
       };
     }
 
+    // ====================================================
+    // CONTEXT
+    // ====================================================
+
     const context =
       this.buildContext(
         topResults,
@@ -213,6 +340,10 @@ Atualmente nossa plataforma é focada em desenvolvimento web, backend, frontend 
       processed.confidence < 0.15 &&
       !topResults.length;
 
+    // ====================================================
+    // OPENAI
+    // ====================================================
+
     const response =
       await this.openaiService.generateResponse(
         dto.message,
@@ -220,6 +351,8 @@ Atualmente nossa plataforma é focada em desenvolvimento web, backend, frontend 
         context,
 
         dto.history ?? [],
+
+        navigationMatch,
       );
 
     return {
@@ -241,6 +374,10 @@ Atualmente nossa plataforma é focada em desenvolvimento web, backend, frontend 
         this.generateSuggestions(
           topResults,
         ),
+
+      navigation:
+        navigationMatch?.navigation ??
+        [],
 
       semanticContext: {
         intent:

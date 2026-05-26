@@ -38,6 +38,8 @@ export class OpenaiService {
       role: string;
       content: string;
     }> = [],
+
+    navigationContext?: any,
   ): Promise<string> {
     try {
       const hasRelevantContext =
@@ -56,6 +58,7 @@ IDENTIDADE:
 - você ajuda usuários da plataforma;
 - você recomenda cursos reais da plataforma;
 - você responde dúvidas educacionais;
+- você ajuda usuários a navegar pelo site;
 - você conversa naturalmente;
 - você NÃO é um vendedor insistente.
 
@@ -75,8 +78,8 @@ REGRAS IMPORTANTES:
 - nunca invente cursos;
 - nunca invente tecnologias disponíveis;
 - nunca invente trilhas;
-- se não houver resultado relevante, diga claramente;
-- não sugira cursos aleatórios;
+- nunca diga que "não possui informações" se existir contexto de navegação;
+- se existir navegação da plataforma, explique naturalmente como acessar;
 - não recomende frontend quando o usuário pedir backend;
 - não recomende backend quando o usuário pedir frontend;
 - se o usuário apenas cumprimentar, converse normalmente;
@@ -89,9 +92,16 @@ QUANDO EXISTIR CONTEXTO RELEVANTE:
 - mantenha resposta objetiva;
 - evite listar cursos demais.
 
+QUANDO EXISTIR NAVEGAÇÃO:
+- explique naturalmente onde o usuário deve clicar;
+- considere que a funcionalidade existe na plataforma;
+- ajude o usuário a encontrar a área correta;
+- seja útil e contextual;
+- nunca responda que não sabe onde fica.
+
 QUANDO NÃO EXISTIR CONTEXTO:
 - seja transparente;
-- diga que atualmente não há cursos específicos;
+- diga que atualmente não há conteúdos específicos;
 - ofereça ajuda relacionada SEM inventar conteúdos.
 
 FORMATO:
@@ -120,6 +130,34 @@ FORMATO:
       }
 
       // ====================================================
+      // NAVIGATION CONTEXT
+      // ====================================================
+
+      const navigationInstructions =
+        navigationContext
+          ? `
+NAVEGAÇÃO DETECTADA:
+
+O usuário provavelmente deseja acessar uma funcionalidade da plataforma.
+
+INFORMAÇÕES DE NAVEGAÇÃO:
+${JSON.stringify(
+  navigationContext.navigation,
+  null,
+  2,
+)}
+
+IMPORTANTE:
+- responda naturalmente;
+- explique ao usuário como acessar;
+- NÃO diga que não possui informações;
+- considere que a plataforma POSSUI essa funcionalidade;
+- seja útil e contextual;
+- mantenha tom humano.
+`
+          : '';
+
+      // ====================================================
       // CURRENT QUESTION
       // ====================================================
 
@@ -133,6 +171,8 @@ ${userMessage}
 Contexto encontrado:
 ${context}
 
+${navigationInstructions}
+
 EXISTE CONTEXTO RELEVANTE?
 ${
   hasRelevantContext
@@ -144,6 +184,7 @@ INSTRUÇÕES:
 - utilize apenas o contexto encontrado;
 - mantenha continuidade natural da conversa;
 - recomende cursos SOMENTE se forem relevantes;
+- se existir navegação, explique naturalmente;
 - não invente informações;
 - não force recomendações;
 - respostas simples devem ser simples.

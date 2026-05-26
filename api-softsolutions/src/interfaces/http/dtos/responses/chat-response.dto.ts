@@ -1,3 +1,11 @@
+export class ChatNavigationDto {
+  label!: string;
+
+  route!: string;
+
+  action?: string;
+}
+
 export class ChatResponseDto {
   response!: string;
 
@@ -18,6 +26,8 @@ export class ChatResponseDto {
 
     concepts?: string[];
   };
+
+  navigation?: ChatNavigationDto[];
 
   conversationId?: string;
 }
